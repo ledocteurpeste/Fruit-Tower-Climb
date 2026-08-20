@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#7ec8ff" />
+<title>Rainbow Jump!</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; }
+  html, body { width:100%; height:100%; overflow:hidden; background:#0b1020; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #game { display:block; width:100%; height:100%; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  .badge {
+    position:absolute; top:14px; left:14px;
+    background:rgba(0,0,0,.35); color:#fff; padding:8px 14px; border-radius:14px;
+    font-weight:800; font-size:16px; letter-spacing:.3px;
+    text-shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  #coinBadge { left:auto; right:14px; }
+
+  /* ---------- Joystick ---------- */
+  #stickZone {
+    position:absolute; left:0; bottom:0; width:45%; height:70%;
+    pointer-events:auto;
+  }
+  #stickBase {
+    position:absolute; width:130px; height:130px; border-radius:50%;
+    border:3px solid rgba(255,255,255,.5); background:rgba(255,255,255,.12);
+    left:70px; bottom:70px; transform:translate(-50%,50%);
+    display:none;
+  }
+  #stickNub {
+    position:absolute; width:62px; height:62px; border-radius:50%;
+    background:rgba(255,255,255,.85); box-shadow:0 3px 10px rgba(0,0,0,.4);
+    left:50%; top:50%; transform:translate(-50%,-50%);
+  }
+
+  /* ---------- Action buttons ---------- */
+  .btn {
+    position:absolute; pointer-events:auto;
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:900; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.45);
+    border:3px solid rgba(255,255,255,.55);
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
+    transition:transform .05s, background .1s;
+  }
+  .btn:active { transform:scale(.92); }
+  #jumpBtn {
+    right:34px; bottom:44px; width:118px; height:118px; font-size:22px;
+    background:rgba(90,200,120,.55);
+  }
+  #jumpBtn2 {
+    right:150px; bottom:120px; width:84px; height:84px; font-size:16px;
+    background:rgba(120,170,255,.5);
+  }
+
+  /* ---------- Overlays ---------- */
+  .overlay {
+    position:fixed; inset:0; z-index:30; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; color:#fff;
+    background:radial-gradient(circle at 50% 35%, rgba(30,50,110,.85), rgba(6,10,26,.96));
+    padding:24px;
+  }
+  .overlay h1 { font-size:clamp(30px,7vw,60px); margin-bottom:8px; text-shadow:0 3px 0 rgba(0,0,0,.3); }
+  .overlay p { font-size:clamp(15px,3.4vw,22px); opacity:.92; margin-bottom:22px; max-width:640px; line-height:1.5; }
+  .bigbtn {
+    pointer-events:auto; cursor:pointer;
+    background:linear-gradient(#ffd34d,#ff9d2e); color:#5a2b00;
+    border:none; border-radius:20px; padding:16px 40px;
+    font-size:clamp(18px,4vw,26px); font-weight:900;
+    box-shadow:0 6px 0 #c26a00, 0 10px 20px rgba(0,0,0,.4);
+  }
+  .bigbtn:active { transform:translateY(4px); box-shadow:0 2px 0 #c26a00, 0 4px 10px rgba(0,0,0,.4); }
+  .hint { margin-top:20px; font-size:14px; opacity:.7; max-width:520px; }
+  #rotate {
+    position:fixed; inset:0; z-index:50; display:none;
+    align-items:center; justify-content:center; flex-direction:column;
+    background:#0b1020; color:#fff; text-align:center; padding:30px;
+  }
+  #rotate .ico { font-size:70px; margin-bottom:16px; animation:spin 2s ease-in-out infinite; }
+  @keyframes spin { 0%,40%{transform:rotate(0)} 60%,100%{transform:rotate(90deg)} }
+  #winFlash { color:#ffe066; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="badge" id="msgBadge">Reach the ⭐ flag!</div>
+  <div class="badge" id="coinBadge">🪙 0 / 0</div>
+
+  <div id="stickZone">
+    <div id="stickBase"><div id="stickNub"></div></div>
+  </div>
+  <div class="btn" id="jumpBtn2">↻<br>look</div>
+  <div class="btn" id="jumpBtn">JUMP</div>
+</div>
+
+<!-- Start screen -->
+<div class="overlay" id="startScreen">
+  <h1>🌈 Rainbow Jump!</h1>
+  <p>Hop across the floating platforms and reach the golden flag ⭐.<br>Collect the coins 🪙 along the way. If you fall, you pop right back!</p>
+  <button class="bigbtn" id="playBtn">▶ Play</button>
+  <div class="hint">
+    <b>Left side:</b> touch &amp; slide to walk &nbsp;·&nbsp; <b>Big green button:</b> jump &nbsp;·&nbsp; <b>Drag the right side:</b> look around<br>
+    On a computer: WASD/arrows to move, Space to jump, drag mouse to look.
+  </div>
+</div>
+
+<!-- Win screen -->
+<div class="overlay" id="winScreen" style="display:none">
+  <h1 id="winFlash">🎉 You did it! 🎉</h1>
+  <p>You reached the flag!<br><span id="winStats"></span></p>
+  <button class="bigbtn" id="againBtn">↺ Play again</button>
+</div>
+
+<!-- Rotate prompt -->
+<div id="rotate"><div class="ico">📱</div><div style="font-size:22px;font-weight:800">Please turn your phone sideways</div><div style="opacity:.7;margin-top:8px">This game plays best in landscape mode</div></div>
+
+<script>
+"use strict";
+/* =========================================================================
+   Rainbow Jump — a tiny 3D obby (obstacle course) for young kids.
+   Self-contained: a minimal WebGL engine (all shapes are boxes), simple
+   AABB physics, third-person orbit camera, and touch controls.
+   ========================================================================= */
+
+/* ----------------------- tiny mat4 / vec math ------------------------ */
+const M = {
+  ident(){ return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); },
+  mul(a,b){ // a*b
+    const o = new Float32Array(16);
+    for(let r=0;r<4;r++) for(let c=0;c<4;c++){
+      o[c*4+r] = a[0*4+r]*b[c*4+0] + a[1*4+r]*b[c*4+1] + a[2*4+r]*b[c*4+2] + a[3*4+r]*b[c*4+3];
+    }
+    return o;
+  },
+  perspective(fovy, aspect, near, far){
+    const f = 1/Math.tan(fovy/2), nf = 1/(near-far);
+    const o = new Float32Array(16);
+    o[0]=f/aspect; o[5]=f; o[10]=(far+near)*nf; o[11]=-1; o[14]=2*far*near*nf;
+    return o;
+  },
+  lookAt(eye, center, up){
+    let zx=eye[0]-center[0], zy=eye[1]-center[1], zz=eye[2]-center[2];
+    let zl=Math.hypot(zx,zy,zz)||1; zx/=zl; zy/=zl; zz/=zl;
+    let xx=up[1]*zz-up[2]*zy, xy=up[2]*zx-up[0]*zz, xz=up[0]*zy-up[1]*zx;
+    let xl=Math.hypot(xx,xy,xz)||1; xx/=xl; xy/=xl; xz/=xl;
+    let yx=zy*xz-zz*xy, yy=zz*xx-zx*xz, yz=zx*xy-zy*xx;
+    const o=new Float32Array(16);
+    o[0]=xx; o[1]=yx; o[2]=zx; o[3]=0;
+    o[4]=xy; o[5]=yy; o[6]=zy; o[7]=0;
+    o[8]=xz; o[9]=yz; o[10]=zz; o[11]=0;
+    o[12]=-(xx*eye[0]+xy*eye[1]+xz*eye[2]);
+    o[13]=-(yx*eye[0]+yy*eye[1]+yz*eye[2]);
+    o[14]=-(zx*eye[0]+zy*eye[1]+zz*eye[2]);
+    o[15]=1;
+    return o;
+  },
+  // model matrix from center position and half-less full size (translate * scale)
+  modelTS(px,py,pz, sx,sy,sz){
+    const o=new Float32Array(16);
+    o[0]=sx; o[5]=sy; o[10]=sz; o[15]=1;
+    o[12]=px; o[13]=py; o[14]=pz;
+    return o;
+  }
+};
+
+/* --------------------------- WebGL setup ----------------------------- */
+const canvas = document.getElementById('game');
+const gl = canvas.getContext('webgl', {antialias:true, alpha:false});
+if(!gl){ document.body.innerHTML = '<div style="color:#fff;padding:40px;font-family:sans-serif">Sorry, this device can’t run WebGL 3D. Try a different browser.</div>'; throw new Error('no webgl'); }
+
+const VS = `
+  attribute vec3 aPos; attribute vec3 aNorm;
+  uniform mat4 uProj, uView, uModel;
+  varying vec3 vNorm; varying float vFog;
+  void main(){
+    vec4 world = uModel * vec4(aPos,1.0);
+    vec4 viewp = uView * world;
+    gl_Position = uProj * viewp;
+    vNorm = aNorm;
+    vFog = clamp((-viewp.z - 20.0)/60.0, 0.0, 1.0);
+  }`;
+const FS = `
+  precision mediump float;
+  varying vec3 vNorm; varying float vFog;
+  uniform vec3 uColor; uniform vec3 uFogColor;
+  void main(){
+    vec3 L = normalize(vec3(0.4, 1.0, 0.35));
+    float d = max(dot(normalize(vNorm), L), 0.0);
+    float light = 0.45 + 0.55*d;
+    vec3 c = uColor * light;
+    c = mix(c, uFogColor, vFog*0.85);
+    gl_FragColor = vec4(c, 1.0);
+  }`;
+
+function compile(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER,VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER,FS));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+const loc = {
+  aPos: gl.getAttribLocation(prog,'aPos'),
+  aNorm: gl.getAttribLocation(prog,'aNorm'),
+  uProj: gl.getUniformLocation(prog,'uProj'),
+  uView: gl.getUniformLocation(prog,'uView'),
+  uModel: gl.getUniformLocation(prog,'uModel'),
+  uColor: gl.getUniformLocation(prog,'uColor'),
+  uFogColor: gl.getUniformLocation(prog,'uFogColor'),
+};
+
+/* Unit cube centered at origin, size 1 (so scale = full size). 24 verts. */
+const cubeVerts = new Float32Array([
+  // +X
+  .5,-.5,-.5, 1,0,0,  .5,.5,-.5, 1,0,0,  .5,.5,.5, 1,0,0,  .5,-.5,.5, 1,0,0,
+  // -X
+  -.5,-.5,.5,-1,0,0, -.5,.5,.5,-1,0,0, -.5,.5,-.5,-1,0,0, -.5,-.5,-.5,-1,0,0,
+  // +Y
+  -.5,.5,-.5, 0,1,0, -.5,.5,.5, 0,1,0,  .5,.5,.5, 0,1,0,  .5,.5,-.5, 0,1,0,
+  // -Y
+  -.5,-.5,.5, 0,-1,0,-.5,-.5,-.5,0,-1,0, .5,-.5,-.5,0,-1,0, .5,-.5,.5,0,-1,0,
+  // +Z
+  -.5,-.5,.5, 0,0,1, .5,-.5,.5, 0,0,1,  .5,.5,.5, 0,0,1, -.5,.5,.5, 0,0,1,
+  // -Z
+  .5,-.5,-.5, 0,0,-1,-.5,-.5,-.5,0,0,-1,-.5,.5,-.5,0,0,-1, .5,.5,-.5,0,0,-1,
+]);
+const cubeIdx = new Uint16Array((()=>{ const a=[]; for(let f=0;f<6;f++){const o=f*4; a.push(o,o+1,o+2, o,o+2,o+3);} return a;})());
+
+const vbo = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,vbo); gl.bufferData(gl.ARRAY_BUFFER,cubeVerts,gl.STATIC_DRAW);
+const ibo = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,cubeIdx,gl.STATIC_DRAW);
+gl.enableVertexAttribArray(loc.aPos);  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 24, 0);
+gl.enableVertexAttribArray(loc.aNorm); gl.vertexAttribPointer(loc.aNorm,3, gl.FLOAT, false, 24, 12);
+
+gl.enable(gl.DEPTH_TEST);
+gl.enable(gl.CULL_FACE);
+const SKY = [0.49, 0.78, 1.0];
+gl.clearColor(SKY[0],SKY[1],SKY[2],1);
+gl.uniform3fv(loc.uFogColor, SKY);
+
+function drawBox(px,py,pz, sx,sy,sz, color){
+  gl.uniformMatrix4fv(loc.uModel,false, M.modelTS(px,py,pz, sx,sy,sz));
+  gl.uniform3fv(loc.uColor, color);
+  gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
+}
+
+/* --------------------------- The level ------------------------------- */
+// Each platform: {x,y,z, w,h,d, color}. x,y,z = center. w,h,d = full size.
+// The path leads generally in +Z, with height changes and small gaps.
+function C(hex){ return [((hex>>16)&255)/255, ((hex>>8)&255)/255, (hex&255)/255]; }
+const PAL = [C(0xff5d5d),C(0xffa53d),C(0xffe14d),C(0x74e06a),C(0x4dc3ff),C(0x9a7bff),C(0xff7bd0)];
+
+const platforms = [];
+const coins = [];
+let goal = null;
+
+function buildLevel(){
+  platforms.length=0; coins.length=0;
+  // start pad (big and safe)
+  platforms.push({x:0,y:0,z:0, w:8,h:1,d:8, color:C(0xf2f2f2)});
+  let x=0, y=0, z=0, ci=0;
+  // Gentle course for a young child: short forward hops (~5), a soft
+  // left/right weave, and small height changes. Every gap is easily jumpable.
+  const steps = [
+    // dx (sideways), dz (forward), dy (height), size
+    [ 0, 5,  0, 3.2],
+    [ 2, 5,  0.8,3.0],
+    [-2, 5,  0, 3.0],
+    [-2, 5,  1.0,2.8],
+    [ 2, 5,  0, 3.0],
+    [ 2, 5, -0.8,3.0],
+    [-2, 5,  1.0,2.8],
+    [ 0, 5,  0, 3.0],
+    [ 2, 5,  1.0,2.8],
+    [-2, 5,  0, 3.0],
+    [-2, 5, -0.8,3.0],
+    [ 2, 5,  1.0,2.8],
+    [ 0, 5,  0, 3.2],
+  ];
+  for(let i=0;i<steps.length;i++){
+    const [dx,dz,dy,sz]=steps[i];
+    x += dx; z += dz; y += dy;
+    const col = PAL[ci++ % PAL.length];
+    platforms.push({x, y, z, w:sz, h:1, d:sz, color:col});
+    // a coin floating above each platform
+    coins.push({x, y:y+1.9, z, got:false, spin:Math.random()*6});
+  }
+  // final big golden goal platform
+  z += 5.5; y += 0.2; x = 0;
+  platforms.push({x, y, z, w:9, h:1, d:9, color:C(0xffd84d)});
+  goal = {x, y:y+0.5, z, r:3.6};
+  document.getElementById('coinBadge').textContent = '🪙 0 / '+coins.length;
+  return {startX:0, startY:2, startZ:0};
+}
+
+/* --------------------------- Player / physics ------------------------ */
+const player = {
+  x:0,y:2,z:0, vx:0,vy:0,vz:0,
+  r:0.42,          // half-width (x/z)
+  hh:0.9,          // half-height
+  onGround:false,
+  spawnX:0, spawnY:2, spawnZ:0,
+  facing:0,
+};
+const GRAV = -26, JUMP = 10.2, MOVE = 7.0, AIRCTRL=0.7;
+
+let coinsGot = 0;
+
+function resetPlayer(toSpawn){
+  player.x = toSpawn? player.spawnX : 0;
+  player.y = toSpawn? player.spawnY : 2;
+  player.z = toSpawn? player.spawnZ : 0;
+  player.vx=player.vy=player.vz=0; player.onGround=false;
+}
+
+// Horizontal (X/Z) overlap used for walls. epsY excludes the "resting on
+// top" case so standing on a platform is never mistaken for a side hit.
+function horizOverlap(px,py,pz, p){
+  const epsY = 0.06;
+  return Math.abs(px-p.x) < player.r + p.w/2 - 1e-4 &&
+         Math.abs(pz-p.z) < player.r + p.d/2 - 1e-4 &&
+         (py + player.hh) > (p.y - p.h/2) + epsY &&
+         (py - player.hh) < (p.y + p.h/2) - epsY;
+}
+// Full overlap used for the vertical (landing / ceiling) pass.
+function vertOverlap(px,py,pz, p){
+  return Math.abs(px-p.x) < player.r + p.w/2 - 1e-4 &&
+         Math.abs(pz-p.z) < player.r + p.d/2 - 1e-4 &&
+         (py - player.hh) < (p.y + p.h/2) &&
+         (py + player.hh) > (p.y - p.h/2);
+}
+
+function physics(dt, inX, inZ){
+  // desired horizontal velocity from input (already in world space)
+  const control = player.onGround ? 1 : AIRCTRL;
+  const targetVx = inX * MOVE, targetVz = inZ * MOVE;
+  // smooth toward target
+  const accel = player.onGround ? 18 : 8;
+  player.vx += (targetVx - player.vx) * Math.min(1, accel*dt) * control;
+  player.vz += (targetVz - player.vz) * Math.min(1, accel*dt) * control;
+  player.vy += GRAV*dt;
+
+  const wasOn = player.onGround;
+  player.onGround = false;
+
+  // Walls first (X then Z), using the epsilon-guarded horizontal test so the
+  // platform we're standing on is never treated as a wall.
+  player.x += player.vx*dt;
+  for(const p of platforms){
+    if(horizOverlap(player.x,player.y,player.z,p)){
+      if(player.vx>0) player.x = p.x - p.w/2 - player.r;
+      else if(player.vx<0) player.x = p.x + p.w/2 + player.r;
+      player.vx = 0;
+    }
+  }
+  player.z += player.vz*dt;
+  for(const p of platforms){
+    if(horizOverlap(player.x,player.y,player.z,p)){
+      if(player.vz>0) player.z = p.z - p.d/2 - player.r;
+      else if(player.vz<0) player.z = p.z + p.d/2 + player.r;
+      player.vz = 0;
+    }
+  }
+  // Vertical last: land on tops, bump on ceilings.
+  player.y += player.vy*dt;
+  for(const p of platforms){
+    if(vertOverlap(player.x,player.y,player.z,p)){
+      const top = p.y + p.h/2, bot = p.y - p.h/2;
+      if(player.vy <= 0 && (player.y - player.hh) < top && (player.y - player.hh) > top - 0.7){
+        player.y = top + player.hh; player.vy = 0; player.onGround = true;
+      } else if(player.vy > 0){
+        player.y = bot - player.hh; player.vy = 0;
+      }
+    }
+  }
+
+  if(player.onGround && !wasOn){ /* landed */ }
+
+  // fell off the world -> respawn at last safe platform
+  if(player.y < -14){ resetPlayer(true); }
+
+  // update facing to movement direction
+  if(Math.abs(player.vx)+Math.abs(player.vz) > 0.5){
+    player.facing = Math.atan2(player.vx, player.vz);
+  }
+
+  // remember a spawn point: last platform we stood on
+  if(player.onGround){
+    // find platform under us
+    for(const p of platforms){
+      if(Math.abs(player.x-p.x) < p.w/2+0.5 && Math.abs(player.z-p.z) < p.d/2+0.5){
+        player.spawnX = p.x; player.spawnY = p.y + p.h/2 + player.hh + 0.1; player.spawnZ = p.z;
+        break;
+      }
+    }
+  }
+
+  // coins
+  for(const c of coins){
+    if(c.got) continue;
+    if(Math.abs(player.x-c.x)<1.1 && Math.abs(player.z-c.z)<1.1 && Math.abs(player.y-c.y)<1.5){
+      c.got=true; coinsGot++;
+      document.getElementById('coinBadge').textContent = '🪙 '+coinsGot+' / '+coins.length;
+      pop();
+    }
+  }
+
+  // reached goal?
+  if(goal && !won){
+    const dx=player.x-goal.x, dz=player.z-goal.z;
+    if(dx*dx+dz*dz < goal.r*goal.r && Math.abs(player.y-goal.y)<2.5){ winGame(); }
+  }
+}
+
+/* --------------------------- Camera --------------------------------- */
+const cam = { yaw: Math.PI, pitch: 0.32, dist: 9 };
+
+/* --------------------------- Input ---------------------------------- */
+const keys = {};
+addEventListener('keydown', e=>{ keys[e.key.toLowerCase()]=true;
+  if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
+  if(e.key===' ') tryJump();
+});
+addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
+
+// --- virtual joystick ---
+const stick = { active:false, id:null, baseX:0, baseY:0, dx:0, dy:0 };
+const stickZone = document.getElementById('stickZone');
+const stickBase = document.getElementById('stickBase');
+const stickNub  = document.getElementById('stickNub');
+const MAXR = 55;
+
+function stickStart(id, x, y){
+  stick.active=true; stick.id=id; stick.baseX=x; stick.baseY=y; stick.dx=0; stick.dy=0;
+  stickBase.style.display='block';
+  stickBase.style.left = x+'px'; stickBase.style.bottom = (innerHeight-y)+'px';
+  stickBase.style.transform='translate(-50%,50%)';
+  stickNub.style.left='50%'; stickNub.style.top='50%';
+}
+function stickMove(x,y){
+  let dx=x-stick.baseX, dy=y-stick.baseY;
+  const len=Math.hypot(dx,dy);
+  if(len>MAXR){ dx=dx/len*MAXR; dy=dy/len*MAXR; }
+  stick.dx=dx/MAXR; stick.dy=dy/MAXR;
+  stickNub.style.left = (50 + dx/MAXR*50)+'%';
+  stickNub.style.top  = (50 + dy/MAXR*50)+'%';
+}
+function stickEnd(){ stick.active=false; stick.id=null; stick.dx=0; stick.dy=0; stickBase.style.display='none'; }
+
+// --- look drag (right side of screen, not on buttons) ---
+const look = { active:false, id:null, lastX:0, lastY:0 };
+
+function inStickZone(x,y){ const r=stickZone.getBoundingClientRect(); return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom; }
+function onButton(t){ return t && (t.id==='jumpBtn'||t.id==='jumpBtn2'||t.classList&&t.classList.contains('bigbtn')); }
+
+canvas.addEventListener('touchstart', e=>{
+  for(const t of e.changedTouches){
+    if(!stick.active && inStickZone(t.clientX,t.clientY)){ stickStart(t.identifier,t.clientX,t.clientY); }
+    else if(!look.active){ look.active=true; look.id=t.identifier; look.lastX=t.clientX; look.lastY=t.clientY; }
+  }
+}, {passive:true});
+addEventListener('touchmove', e=>{
+  for(const t of e.changedTouches){
+    if(stick.active && t.identifier===stick.id) stickMove(t.clientX,t.clientY);
+    else if(look.active && t.identifier===look.id){
+      cam.yaw   -= (t.clientX-look.lastX)*0.006;
+      cam.pitch += (t.clientY-look.lastY)*0.006;
+      cam.pitch = Math.max(-0.2, Math.min(1.15, cam.pitch));
+      look.lastX=t.clientX; look.lastY=t.clientY;
+    }
+  }
+}, {passive:true});
+addEventListener('touchend', e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===stick.id) stickEnd();
+    if(t.identifier===look.id) look.active=false;
+  }
+}, {passive:true});
+
+// --- mouse look for desktop ---
+let mouseDown=false, mLastX=0;
+canvas.addEventListener('mousedown', e=>{ mouseDown=true; mLastX=e.clientX; mLastY=e.clientY; });
+addEventListener('mouseup', ()=>mouseDown=false);
+addEventListener('mousemove', e=>{
+  if(!mouseDown) return;
+  cam.yaw   -= (e.clientX-mLastX)*0.005;
+  cam.pitch += (e.clientY-mLastY)*0.005;
+  cam.pitch = Math.max(-0.2, Math.min(1.15, cam.pitch));
+  mLastX=e.clientX; mLastY=e.clientY;
+});
+
+// --- jump buttons ---
+function tryJump(){ if(player.onGround){ player.vy = JUMP; player.onGround=false; } }
+const jb = document.getElementById('jumpBtn'), jb2=document.getElementById('jumpBtn2');
+['touchstart','mousedown'].forEach(ev=> jb.addEventListener(ev, e=>{ e.preventDefault(); tryJump(); }, {passive:false}));
+// jumpBtn2 doubles as an extra jump (kids love two buttons) – keep it simple
+['touchstart','mousedown'].forEach(ev=> jb2.addEventListener(ev, e=>{ e.preventDefault(); tryJump(); }, {passive:false}));
+
+/* --------------------------- Little effects -------------------------- */
+let sparkles = [];
+function pop(){ for(let i=0;i<10;i++) sparkles.push({x:player.x,y:player.y+1,z:player.z,
+   vx:(Math.random()-.5)*4, vy:Math.random()*5+2, vz:(Math.random()-.5)*4, life:0.7, c:PAL[(Math.random()*PAL.length)|0]}); }
+
+/* --------------------------- Game flow ------------------------------- */
+let running=false, won=false, startInfo;
+function startGame(){
+  startInfo = buildLevel();
+  coinsGot=0; won=false;
+  player.spawnX=0; player.spawnY=2; player.spawnZ=0;
+  resetPlayer(false);
+  cam.yaw=Math.PI; cam.pitch=0.32;
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('winScreen').style.display='none';
+  running=true;
+}
+function winGame(){
+  won=true; running=false;
+  document.getElementById('winStats').textContent = 'You collected '+coinsGot+' of '+coins.length+' coins! 🪙';
+  document.getElementById('winScreen').style.display='flex';
+}
+document.getElementById('playBtn').addEventListener('click', startGame);
+document.getElementById('againBtn').addEventListener('click', startGame);
+
+/* --------------------------- Resize / orientation -------------------- */
+function resize(){
+  const dpr = Math.min(devicePixelRatio||1, 2);
+  canvas.width = innerWidth*dpr; canvas.height = innerHeight*dpr;
+  canvas.style.width = innerWidth+'px'; canvas.style.height = innerHeight+'px';
+  gl.viewport(0,0,canvas.width,canvas.height);
+}
+addEventListener('resize', resize); resize();
+
+function checkOrient(){
+  const portrait = innerHeight > innerWidth;
+  const isPhone = Math.min(innerWidth,innerHeight) < 560 && ('ontouchstart' in window);
+  document.getElementById('rotate').style.display = (portrait && isPhone) ? 'flex' : 'none';
+}
+addEventListener('resize', checkOrient); checkOrient();
+
+/* --------------------------- Main loop ------------------------------- */
+let last = performance.now();
+function frame(now){
+  let dt = (now-last)/1000; last=now;
+  if(dt>0.05) dt=0.05; // clamp big gaps
+
+  if(running){
+    // gather input -> world-space direction relative to camera yaw
+    let ix=0, iz=0;
+    if(stick.active){ ix += stick.dx; iz += stick.dy; }
+    if(keys['a']||keys['arrowleft']) ix-=1;
+    if(keys['d']||keys['arrowright']) ix+=1;
+    if(keys['w']||keys['arrowup']) iz-=1;
+    if(keys['s']||keys['arrowdown']) iz+=1;
+    // clamp magnitude
+    const mag=Math.hypot(ix,iz); if(mag>1){ ix/=mag; iz/=mag; }
+    // Move relative to where the camera is looking.
+    // Camera-forward on the ground (direction the camera points, toward the course):
+    const fwdX = -Math.sin(cam.yaw), fwdZ = -Math.cos(cam.yaw);
+    // Camera-right (forward rotated 90° about Y):
+    const rightX = fwdZ, rightZ = -fwdX;
+    // stick "up" (iz<0) = forward, stick right (ix>0) = camera-right
+    const wx = rightX*ix + fwdX*(-iz);
+    const wz = rightZ*ix + fwdZ*(-iz);
+
+    physics(dt, wx, wz);
+
+    // update sparkles
+    for(const s of sparkles){ s.vy+=GRAV*dt*0.4; s.x+=s.vx*dt; s.y+=s.vy*dt; s.z+=s.vz*dt; s.life-=dt; }
+    sparkles = sparkles.filter(s=>s.life>0);
+  }
+
+  render(now/1000);
+  requestAnimationFrame(frame);
+}
+
+function render(t){
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+  const aspect = canvas.width/canvas.height;
+  const proj = M.perspective(1.05, aspect, 0.1, 400);
+  gl.uniformMatrix4fv(loc.uProj,false,proj);
+
+  // third-person camera orbit around player
+  const cp=Math.cos(cam.pitch), sp=Math.sin(cam.pitch);
+  const eye = [
+    player.x + Math.sin(cam.yaw)*cam.dist*cp,
+    player.y + 1.2 + cam.dist*sp,
+    player.z + Math.cos(cam.yaw)*cam.dist*cp,
+  ];
+  const view = M.lookAt(eye, [player.x, player.y+0.6, player.z], [0,1,0]);
+  gl.uniformMatrix4fv(loc.uView,false,view);
+
+  // platforms
+  for(const p of platforms) drawBox(p.x,p.y,p.z, p.w,p.h,p.d, p.color);
+
+  // goal flag (pole + flag) on the golden platform
+  if(goal){
+    drawBox(goal.x, goal.y+2.0, goal.z-2.6, 0.16,4.0,0.16, C(0x8a5a2b)); // pole
+    const wave = Math.sin(t*4)*0.15;
+    drawBox(goal.x+1.1, goal.y+3.3+wave, goal.z-2.6, 2.0,1.2,0.12, C(0xff3b6b)); // flag
+    drawBox(goal.x+1.1, goal.y+3.3+wave, goal.z-2.6, 2.02,0.4,0.14, C(0xffffff)); // stripe
+  }
+
+  // coins (spinning yellow discs = thin boxes)
+  for(const c of coins){
+    if(c.got) continue;
+    const s = 0.9 + Math.sin(t*3+c.spin)*0.06;
+    // spin: approximate by squashing width with time
+    const w = 0.9*Math.abs(Math.cos(t*3+c.spin))+0.12;
+    drawBox(c.x, c.y+Math.sin(t*2+c.spin)*0.15, c.z, w,1.0,0.16, C(0xffe14d));
+  }
+
+  // sparkles
+  for(const s of sparkles) drawBox(s.x,s.y,s.z, 0.2,0.2,0.2, s.c);
+
+  // ---- draw the player (a cute blocky character) ----
+  const px=player.x, py=player.y, pz=player.z, f=player.facing;
+  const fx=Math.sin(f), fz=Math.cos(f);
+  // body
+  drawBox(px, py-0.15, pz, 0.7,0.9,0.5, C(0x4dc3ff));
+  // head
+  drawBox(px, py+0.75, pz, 0.62,0.6,0.6, C(0xffcf9e));
+  // hat
+  drawBox(px, py+1.12, pz, 0.7,0.22,0.7, C(0xff5d5d));
+  drawBox(px+fx*0.36, py+0.82, pz+fz*0.36, 0.12,0.12,0.05, C(0x222222)); // one eye-ish dot forward
+  // legs
+  drawBox(px-0.2, py-0.85, pz, 0.24,0.6,0.24, C(0x2a4a8a));
+  drawBox(px+0.2, py-0.85, pz, 0.24,0.6,0.24, C(0x2a4a8a));
+  // arms
+  drawBox(px-0.48, py-0.05, pz, 0.2,0.6,0.2, C(0x3fb0ec));
+  drawBox(px+0.48, py-0.05, pz, 0.2,0.6,0.2, C(0x3fb0ec));
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
