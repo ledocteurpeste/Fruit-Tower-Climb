@@ -36,7 +36,7 @@
 
   /* ============ Touch controls ============ */
   #stickZone{ position:absolute; left:0; bottom:0; width:46%; height:72%; pointer-events:auto; }
-  #stickBase{ position:absolute; width:132px; height:132px; border-radius:50%;
+  #stickBase{ position:fixed; width:132px; height:132px; border-radius:50%;
     border:3px solid rgba(255,255,255,.5); background:rgba(255,255,255,.13); display:none; }
   #stickNub{ position:absolute; width:62px; height:62px; border-radius:50%;
     background:rgba(255,255,255,.85); box-shadow:0 3px 10px rgba(0,0,0,.4); left:50%; top:50%;
@@ -945,8 +945,13 @@ function sMove(x,y){ let dx=x-stick.bx,dy=y-stick.by,l=Math.hypot(dx,dy); if(l>M
 function sEnd(){ stick.active=false;stick.id=null;stick.dx=0;stick.dy=0; stickBase.style.display='none'; }
 const look={active:false,id:null,lx:0,ly:0};
 function inStick(x,y){ const r=stickZone.getBoundingClientRect(); return x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom; }
-canvas.addEventListener('touchstart',e=>{ for(const tc of e.changedTouches){
+function onActionBtn(el){ return !!(el && el.closest && el.closest('.actbtn,#pauseBtn,.btn,.toggle,.arrow')); }
+// NOTE: listen on the window, not the canvas. The HUD (joystick zone + buttons) is layered
+// above the canvas with pointer-events:auto, so touches land there and bubble to the
+// document -- the canvas is a sibling and would never receive them.
+addEventListener('touchstart',e=>{ for(const tc of e.changedTouches){
   if(state!=='play') continue;
+  if(onActionBtn(tc.target)) continue;              // JUMP / view / pause handle themselves
   if(!stick.active&&inStick(tc.clientX,tc.clientY)) sStart(tc.identifier,tc.clientX,tc.clientY);
   else if(!look.active){ look.active=true;look.id=tc.identifier;look.lx=tc.clientX;look.ly=tc.clientY; } } },{passive:true});
 addEventListener('touchmove',e=>{ for(const tc of e.changedTouches){
@@ -955,7 +960,7 @@ addEventListener('touchmove',e=>{ for(const tc of e.changedTouches){
     cam.pitch=Math.max(-0.1,Math.min(1.15,cam.pitch)); look.lx=tc.clientX; look.ly=tc.clientY; } } },{passive:true});
 addEventListener('touchend',e=>{ for(const tc of e.changedTouches){ if(tc.identifier===stick.id) sEnd(); if(tc.identifier===look.id) look.active=false; } },{passive:true});
 let md=false,mlx=0,mly=0;
-canvas.addEventListener('mousedown',e=>{ if(state==='play'){ md=true;mlx=e.clientX;mly=e.clientY; } });
+addEventListener('mousedown',e=>{ if(state==='play' && !onActionBtn(e.target)){ md=true;mlx=e.clientX;mly=e.clientY; } });
 addEventListener('mouseup',()=>md=false);
 addEventListener('mousemove',e=>{ if(!md)return; cam.yaw-=(e.clientX-mlx)*0.005; cam.pitch+=(e.clientY-mly)*0.005;
   cam.pitch=Math.max(-0.1,Math.min(1.15,cam.pitch)); mlx=e.clientX; mly=e.clientY; });
