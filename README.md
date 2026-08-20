@@ -1,39 +1,57 @@
-# 🌈 Rainbow Jump!
+# 🍒 Fruit Tower Climb 🫐
 
-A simple, colorful **3D obby** (obstacle course, like Roblox) made for a young
-child. Hop across floating platforms, collect coins 🪙, and reach the golden
-flag ⭐. Fall off? You pop right back to the last platform — you can never
-"lose", so it stays fun and frustration-free.
+A colorful 3D climbing **obby** (obstacle course) made for Hazel. Climb to the
+top of three fruit-themed towers — **Cherry → Strawberry → Blueberry** — grab
+coins on the way up, dodge the hazards, and reach the flag at the top to move on
+to the next tower. Race the clock for your best time!
 
 It's a **single HTML file with no dependencies** — no internet, no install, no
-app store. It runs entirely on the device.
+app store. Just open it on the phone and play. Best held **sideways
+(landscape)**.
 
 ## How to play
 
-- **Left side of the screen** — touch and slide to walk (a joystick appears
-  under your thumb, Minecraft-style).
+- **Left side of the screen** — touch & slide to walk (a joystick appears under
+  your thumb, Minecraft-mobile style).
 - **Big green JUMP button** (bottom right) — jump.
-- **Drag the right side of the screen** — look around / turn the camera.
+- **Blue “view” button** — snaps the camera back behind you if you get turned
+  around.
+- **Drag anywhere on the right side** — look around.
 - On a computer: **WASD / arrow keys** to move, **Space** to jump, **drag the
-  mouse** to look.
+  mouse** to look, **Esc** to pause.
 
-Best played on a **phone held sideways (landscape)**.
+## What's in it
+
+- **Choose your climber** — four Roblox-style characters: **Lily** (blonde,
+  white tee & jeans), **Mimi** (cat-ear headband), **Max** (wavy “bacon” hair),
+  and **Sam** (spiky black hair).
+- **Three towers**, each fruit-themed with its own colors and music.
+- **Obstacles & gadgets:** moving platforms, spinning ride discs, a trampoline
+  that bounces you over a wall, spikes to avoid, fans that push you up (and
+  down), and a **rope you swing from** (tap JUMP to let go!).
+- **Coins** to collect, a **timer** for your run, and **3 lives** shown at the
+  top. Grab **50 coins to earn an extra life**. Coins reset each tower.
+- **Checkpoints** — if you fall, you pop back to the last flag you touched.
+- **Menus:** animated title, main menu (Begin, Options, Leaderboard, Quit),
+  **Options** to turn Music / Sound Effects on or off and enable **Cheats**
+  (unlimited lives), and a **Leaderboard** of your best times (saved on the
+  device).
+- **Music & sound effects** are generated right in the browser — no audio files.
 
 ## Running it
 
 ### On a computer
-Just double-click `index.html` — it opens in your browser and plays.
+Double-click `index.html` — it opens in your browser and plays.
 
 ### On an iPhone / iPad (fully local, no server)
-1. Email or AirDrop `index.html` to the device (or put it in Files / iCloud
+1. AirDrop or email `index.html` to the device (or drop it in Files / iCloud
    Drive).
-2. Open the **Files** app, tap `index.html`.
-3. If it doesn't open in a browser, share it to a browser, or use an app that
-   opens local HTML. Then turn the phone **sideways** and tap **Play**.
+2. Open the **Files** app and tap `index.html` (or share it into Safari/Chrome).
+3. Turn the phone **sideways**, wait for the title, and tap **Begin Game**.
+   Tap the screen once so sound can start.
 
 ### Easiest way to get it onto a phone
-Serve the folder from a computer on the same Wi‑Fi and open the address on the
-phone:
+Serve the folder from a computer on the same Wi-Fi:
 
 ```bash
 cd iOS-Local-Browser-Game
@@ -41,20 +59,21 @@ python3 -m http.server 8000
 ```
 
 Then on the phone's browser go to `http://<your-computer-ip>:8000`.
-(The game itself still runs 100% locally in the browser — the server is only
-used to hand the file to the phone.)
+(The game still runs 100% locally in the browser — the server just hands over
+the file.)
 
 ## Tips for grown-ups
 
-Everything the game does lives in `index.html`. A few easy tweaks:
+Everything lives in `index.html`.
 
-- **Make it easier/harder:** in the `buildLevel()` function, the `steps` list
-  controls each hop — `[sideways, forward, height, size]`. Smaller `forward`
+- **Make a tower easier/harder:** each tower is built in `buildLevel()`. The
+  `steps` list places platforms as `[sideways, forward, height, size]` — smaller
   gaps and bigger `size` = easier.
-- **Change jump feel:** the `JUMP`, `GRAV`, and `MOVE` constants near
-  `const GRAV = ...`.
-- **Colors:** the `PAL` palette and the character's colors in the `render()`
-  function.
+- **Jump feel:** the `JUMP`, `GRAV`, `MOVE`, `TRAMP` constants near the top of
+  the game logic.
+- **Characters:** the `CHARACTERS` array (colors + features).
+- **Music/keys:** the `Audio_` object (each tower shifts key with
+  `Audio_.setTheme`).
 
-It's a tiny custom 3D engine built on WebGL (all shapes are boxes), so it stays
+Built on a tiny custom WebGL engine (boxes, cylinders and cones), so it stays
 fast even on older phones.
