@@ -12,7 +12,19 @@ Climb up **Cherry → Strawberry → Blueberry**, grabbing coins and dodging haz
 
 **On a computer:** just double-click `index.html`.
 
-**On a phone or tablet (easiest):** run a tiny local server on a computer on the same Wi‑Fi, then open its address on the phone —
+**On a phone or tablet — the easy way (no download, no computer):** turn on GitHub Pages once, then just visit the link and play.
+
+1. In this repo go to **Settings → Pages**.
+2. Under *Build and deployment* → *Source*, pick **Deploy from a branch**.
+3. Choose branch **`main`**, folder **`/ (root)`**, and hit **Save**.
+4. Wait ~1 minute, then open this on the phone:
+   **`https://ledocteurpeste.github.io/iOS-Local-Browser-Game/`**
+
+Turn the phone sideways and tap **Begin Game**. In Safari you can also tap **Share → Add to Home Screen** to get a real app icon that opens fullscreen.
+
+**On a phone — download the file instead:** open [`index.html`](index.html) on GitHub and tap the **download / raw** button to save it to *Files*, then open it from there.
+
+**On a phone or tablet (via your own computer):** run a tiny local server on a computer on the same Wi‑Fi, then open its address on the phone —
 
 ```bash
 cd iOS-Local-Browser-Game
