@@ -62,6 +62,15 @@
     background:linear-gradient(#ffe36e,#ff7ab0 55%,#ff4d6d);
     -webkit-background-clip:text; background-clip:text; color:transparent;
     filter:drop-shadow(0 4px 0 rgba(0,0,0,.28)); letter-spacing:1px; }
+  h1.logo.logo-sad{ font-size:clamp(36px,9vw,64px);
+    background:linear-gradient(#ffd0d0,#ff5c78);
+    -webkit-background-clip:text; background-clip:text; }
+  /* if a browser can't paint a gradient into text, show solid readable text instead */
+  @supports not ((-webkit-background-clip:text) or (background-clip:text)){
+    h1.logo{ background:none !important; color:#ffd75e; -webkit-text-fill-color:#ffd75e; }
+    h1.logo.logo-sad{ color:#ff8fa3; -webkit-text-fill-color:#ff8fa3; }
+    .logo .sub{ color:#fff; -webkit-text-fill-color:#fff; }
+  }
   .logo .sub{ display:block; font-size:.34em; letter-spacing:6px; color:#fff; -webkit-text-fill-color:#fff;
     background:none; margin-top:6px; opacity:.9; }
   .tag{ font-size:clamp(14px,3.2vw,20px); opacity:.9; margin:14px 0 26px; max-width:640px; line-height:1.5; }
@@ -231,7 +240,7 @@
 
 <!-- Game over: no stats box, just a friendly nudge -->
 <div class="screen hidden" id="overScreen">
-  <h1 class="logo" style="font-size:clamp(36px,9vw,64px);background:linear-gradient(#ffd0d0,#ff5c78)">Game Over</h1>
+  <h1 class="logo logo-sad">Game Over</h1>
   <div class="tag">Nice try! Give it another shot?</div>
   <button class="btn" id="overRetry">↺ Try Again</button>
   <button class="btn ghost" id="overMenu">🏠 Main Menu</button>
@@ -469,136 +478,201 @@ function saveScore(name,time){ const s=loadScores(); s.push({name,time}); s.sort
 const CHARACTERS=[
   { name:'Lily', desc:'Blonde hair, white tee & jeans', kind:'human',
     skin:C(0xffd2a6), hair:C(0xffdd55), shirt:C(0xffffff), legs:C(0x4a74c8), shoe:C(0xff4d6d),
-    eye:C(0x35507a), blush:true, hairStyle:'long' },
+    eye:C(0x3f7ad6), hairStyle:'long', bangs:true, blush:true, bigEyes:true, sparkle:true, lashes:true, laces:true },
+  { name:'Rosie', desc:'Pink pigtails & a glitter skirt', kind:'human',
+    skin:C(0xffcfa8), hair:C(0xff9ecb), shirt:C(0xbfe6ff), legs:C(0xffd2a6), shoe:C(0xffffff),
+    skirt:C(0xc9a3ff), tie:C(0x9fd8ff), bow:C(0xffe36e), eye:C(0x9a6bd8),
+    hairStyle:'pigtails', bangs:true, fluffy:true, blush:true, bigEyes:true, sparkle:true, lashes:true, laces:true },
+  { name:'Willow', desc:'Long lavender braid', kind:'human',
+    skin:C(0xffd9b0), hair:C(0xc9a7e8), shirt:C(0xffd94d), legs:C(0x2f2b35), shoe:C(0xf0a2a2),
+    tie:C(0xd9b3ff), eye:C(0x7d4fc4),
+    hairStyle:'braid', bangs:true, blush:true, bigEyes:true, sparkle:true, lashes:true },
   { name:'Mimi', desc:'Cool cat-ear headband', kind:'human',
     skin:C(0xffd2a6), hair:C(0x2f2530), shirt:C(0x2b2b33), legs:C(0x453a45), shoe:C(0xff7bd0),
-    eye:C(0x4a2f5a), blush:true, hairStyle:'bob', catBand:true },
-  { name:'Max', desc:'Wavy “bacon” hair', kind:'human',
-    skin:C(0xf6c48f), hair:C(0xb5642e), shirt:C(0x57b85a), legs:C(0x6a4a2a), shoe:C(0x3a3a3a),
-    eye:C(0x4a3a22), hairStyle:'bacon' },
+    eye:C(0x6a4fa0), hairStyle:'bob', bangs:true, catBand:true, blush:true, bigEyes:true, sparkle:true, lashes:true },
+  { name:'Max', desc:'Bacon hair & a black jacket', kind:'human',
+    skin:C(0xf6c48f), hair:C(0xb5642e), shirt:C(0x2fa8e0), jacket:C(0x24242c),
+    legs:C(0x2b2f3a), shoe:C(0xffffff), eye:C(0x5a4326), hairStyle:'bacon', laces:true },
   { name:'Sam', desc:'Spiky black hair', kind:'human',
     skin:C(0xeaa877), hair:C(0x1d1a22), shirt:C(0xe23b4e), legs:C(0x2b4a8f), shoe:C(0x262626),
-    eye:C(0x2a2a33), hairStyle:'spiky' },
-  { name:'Pounce', desc:'A cat who loves high places', kind:'cat',
-    skin:C(0xf7a94a), hair:C(0xe08b2a), shirt:C(0x4fc3f7), legs:C(0x2f7fb5), shoe:C(0x24506e),
-    eye:C(0x2e7d32), blush:true },
+    eye:C(0x3a3a46), hairStyle:'spiky', laces:true },
+  { name:'Pounce', desc:'A grinning blue cat', kind:'cat',
+    skin:C(0x8f9ad8), hair:C(0x7b86c8), shirt:C(0x4a5aa8), legs:C(0x3a4790), shoe:C(0x2b3570),
+    eye:C(0xffa726), stripes:true, grin:true, bigEyes:true, blush:true, glove:C(0xe8ecff) },
   { name:'Biscuit', desc:'A very good dog', kind:'dog',
     skin:C(0xc98b52), hair:C(0x8b5a2b), shirt:C(0xffd34d), legs:C(0x9c6b2f), shoe:C(0x5a3a1a),
-    eye:C(0x3a2a1a), blush:true },
+    eye:C(0x5a3a1a), blush:true, bigEyes:true },
   { name:'Kiwi', desc:'A parrot with big feelings', kind:'parrot',
     skin:C(0x35c85a), hair:C(0xffd23d), shirt:C(0xff4d4d), legs:C(0x2f9ad4), shoe:C(0xffa726),
-    eye:C(0x222222) },
+    eye:C(0x2a2a33), bigEyes:true, glove:C(0xffe9a8) },
 ];
 let chosen=0; try{ chosen=Math.max(0,Math.min(CHARACTERS.length-1, parseInt(localStorage.getItem('ft_char')||'0'))); }catch(e){}
 
-/* one hand: palm + four fingers + thumb (kept small but readable) */
-function drawHand(B,S, lx,ly,lz, skin, flip){
-  B(lx,ly,lz, 0.30,0.24,0.28, skin);                                   // palm
-  for(let f=0;f<4;f++) B(lx, ly-0.21, lz-0.10+f*0.07, 0.22,0.20,0.055, skin);  // fingers
-  B(lx+flip*0.17, ly-0.02, lz+0.05, 0.11,0.18,0.11, skin, flip*0.5);    // thumb
+/* Disney-style glove: rounded white mitt with four fingers and a thumb */
+function drawGlove(B,S, lx,ly,lz, col, flip){
+  S(lx,ly,lz, 0.19, col, 0.34);                                     // rounded palm
+  for(let f=0;f<4;f++) S(lx+flip*0.02, ly-0.20, lz-0.105+f*0.07, 0.055, col, 0.20); // fingers
+  S(lx+flip*0.17, ly-0.03, lz+0.05, 0.065, col, 0.17);              // thumb
+  S(lx,ly+0.13,lz, 0.155, col, 0.10);                               // cuff
 }
 
 function drawChar(ch, x,y,z, face, walk, airborne, t){
   const cs=Math.cos(face), sn=Math.sin(face);
-  // local -> world helpers (local +Z is forward)
   const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, sx,sy,sz, c, face, rz);
   const S=(lx,ly,lz,r,c,sy)=>sph(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, r, c, sy, face);
   const K=(lx,ly,lz,r,h,c,rz)=>cone(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, r,h, c, face, rz);
   const Cy=(lx,ly,lz,r,h,c,rz)=>cyl(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, r,h, c, face, rz);
 
-  const sw=Math.sin(walk)*0.34;                 // leg/arm swing
-  const bob=Math.abs(Math.sin(walk))*0.04;
-  const blink=(Math.sin(t*1.7)>0.985);          // occasional blink
-  const isAnimal=ch.kind!=='human';
+  const sw=Math.sin(walk)*0.34, bob=Math.abs(Math.sin(walk))*0.04;
+  const blink=(Math.sin(t*1.7)>0.985);
+  const glove=ch.glove||C(0xffffff);
+  const WHITE=C(0xffffff), DARK=C(0x241f2b);
 
   /* legs + shoes */
   B(-0.22,-0.86+bob, sw*0.55, 0.30,0.62,0.30, ch.legs);
   B( 0.22,-0.86+bob,-sw*0.55, 0.30,0.62,0.30, ch.legs);
   B(-0.22,-1.22, sw*0.55+0.04, 0.34,0.20,0.42, ch.shoe);
   B( 0.22,-1.22,-sw*0.55+0.04, 0.34,0.20,0.42, ch.shoe);
+  if(ch.laces){ B(-0.22,-1.14, sw*0.55+0.16, 0.24,0.06,0.10, WHITE);
+                B( 0.22,-1.14,-sw*0.55+0.16, 0.24,0.06,0.10, WHITE); }
 
-  /* torso — slightly tapered chunk */
+  /* torso */
   B(0,-0.16+bob,0, 0.78,0.94,0.50, ch.shirt);
-  B(0, 0.30+bob,0, 0.72,0.14,0.48, mixc(ch.shirt,[1,1,1],0.18)); // collar
+  if(ch.jacket){ B(-0.34,-0.16+bob,0.02, 0.16,0.96,0.54, ch.jacket);
+                 B( 0.34,-0.16+bob,0.02, 0.16,0.96,0.54, ch.jacket);
+                 B(0,-0.60+bob,0.02, 0.80,0.14,0.54, ch.jacket); }
+  if(ch.fluffy){ for(let k=0;k<7;k++){ const a=k/7*6.2832;
+      S(Math.cos(a)*0.40, 0.26+bob, Math.sin(a)*0.26, 0.13, mixc(ch.shirt,[1,1,1],0.25), 0.20); } }
+  if(ch.skirt){ Cy(0,-0.58+bob,0, 0.56,0.30, ch.skirt);
+                Cy(0,-0.71+bob,0, 0.62,0.10, mixc(ch.skirt,[1,1,1],0.30)); }
+  B(0, 0.30+bob,0, 0.72,0.14,0.48, mixc(ch.shirt,[1,1,1],0.18));
 
-  /* arms + hands */
+  /* arms + gloved hands */
   const armSw=-sw;
-  B(-0.52,-0.12+bob, armSw*0.5, 0.22,0.66,0.22, isAnimal?ch.skin:ch.skin);
-  B( 0.52,-0.12+bob,-armSw*0.5, 0.22,0.66,0.22, ch.skin);
-  drawHand(B,S, -0.53,-0.54+bob, armSw*0.5, ch.skin, -1);
-  drawHand(B,S,  0.53,-0.54+bob,-armSw*0.5, ch.skin,  1);
+  const sleeve = ch.fluffy? mixc(ch.shirt,[1,1,1],0.15) : (ch.jacket||ch.skin);
+  B(-0.52,-0.12+bob, armSw*0.5, 0.22,0.62,0.22, sleeve);
+  B( 0.52,-0.12+bob,-armSw*0.5, 0.22,0.62,0.22, sleeve);
+  drawGlove(B,S, -0.53,-0.50+bob, armSw*0.5, glove, -1);
+  drawGlove(B,S,  0.53,-0.50+bob,-armSw*0.5, glove,  1);
 
-  /* neck, then a big head for the toy look */
+  /* neck + head */
   B(0,0.40+bob,0, 0.28,0.20,0.26, ch.skin);
   const hy=0.80+bob;
-  if(ch.kind==='parrot'){ S(0,hy,0, 0.40, ch.skin, 0.78); }
+  if(ch.kind==='parrot') S(0,hy,0, 0.40, ch.skin, 0.78);
   else B(0,hy,0, 0.70,0.66,0.66, ch.skin);
 
-  /* eyes: white + pupil + shine, with brows for expression */
-  const ey=hy+0.06, ez=0.34;
-  const eyeH=blink?0.05:0.22;
-  S(-0.17,ey,ez, 0.13, C(0xffffff), eyeH);
-  S( 0.17,ey,ez, 0.13, C(0xffffff), eyeH);
+  /* ---- big expressive eyes ---- */
+  const ez=0.33, ey=hy+0.05;
+  const er=ch.bigEyes?0.165:0.135;
+  const eh=blink?0.05:er*1.60;
+  S(-0.17,ey,ez, er, WHITE, eh);
+  S( 0.17,ey,ez, er, WHITE, eh);
   if(!blink){
-    S(-0.17,ey-0.01,ez+0.06, 0.075, ch.eye, 0.14);
-    S( 0.17,ey-0.01,ez+0.06, 0.075, ch.eye, 0.14);
-    S(-0.20,ey+0.05,ez+0.09, 0.030, C(0xffffff), 0.05);
-    S( 0.14,ey+0.05,ez+0.09, 0.030, C(0xffffff), 0.05);
+    S(-0.17,ey-0.012,ez+0.055, er*0.86, ch.eye, er*1.34);  // big iris
+    S( 0.17,ey-0.012,ez+0.055, er*0.86, ch.eye, er*1.34);
+    S(-0.17,ey-0.02,ez+0.09, er*0.46, DARK, er*0.76);      // pupil
+    S( 0.17,ey-0.02,ez+0.09, er*0.46, DARK, er*0.76);
+    if(ch.sparkle){                                        // star twinkle
+      for(const sx of [-0.205,0.135]){
+        B(sx,ey+0.05,ez+0.12, 0.055,0.016,0.016, WHITE);
+        B(sx,ey+0.05,ez+0.12, 0.016,0.055,0.016, WHITE); }
+      S(-0.135,ey-0.055,ez+0.11, 0.026, WHITE, 0.04);
+      S( 0.205,ey-0.055,ez+0.11, 0.026, WHITE, 0.04);
+    } else {
+      S(-0.205,ey+0.05,ez+0.10, 0.032, WHITE, 0.05);
+      S( 0.135,ey+0.05,ez+0.10, 0.032, WHITE, 0.05);
+    }
   }
-  const browY=ey+0.17+(airborne?0.05:0);
-  B(-0.17,browY,ez+0.02, 0.20,0.05,0.05, mixc(ch.hair,[0,0,0],0.15), airborne?-0.25:-0.12);
-  B( 0.17,browY,ez+0.02, 0.20,0.05,0.05, mixc(ch.hair,[0,0,0],0.15), airborne? 0.25: 0.12);
+  if(ch.lashes){
+    B(-0.17,ey+er*0.95,ez+0.05, er*2.1,0.04,0.06, DARK, -0.12);
+    B( 0.17,ey+er*0.95,ez+0.05, er*2.1,0.04,0.06, DARK,  0.12);
+    B(-0.17-er*0.9,ey+er*0.75,ez+0.05, 0.10,0.035,0.05, DARK, 0.55);
+    B( 0.17+er*0.9,ey+er*0.75,ez+0.05, 0.10,0.035,0.05, DARK,-0.55);
+  }
+  const browY=ey+0.22+(airborne?0.04:0);
+  B(-0.17,browY,ez+0.02, 0.19,0.045,0.05, ch.brow||mixc(ch.hair,[0,0,0],0.15), airborne?-0.28:-0.12);
+  B( 0.17,browY,ez+0.02, 0.19,0.045,0.05, ch.brow||mixc(ch.hair,[0,0,0],0.15), airborne? 0.28: 0.12);
 
-  /* mouth — open "wheee" in the air, smile on the ground */
-  if(airborne){ S(0,hy-0.20,ez+0.02, 0.11, C(0x8c2b3a), 0.16); }
-  else { B(-0.09,hy-0.19,ez+0.02, 0.10,0.05,0.04, C(0x8c2b3a), 0.5);
-         B( 0.00,hy-0.22,ez+0.03, 0.12,0.05,0.04, C(0x8c2b3a));
-         B( 0.09,hy-0.19,ez+0.02, 0.10,0.05,0.04, C(0x8c2b3a),-0.5); }
-  if(ch.blush){ S(-0.30,hy-0.12,ez-0.04, 0.075, C(0xff9db4), 0.10);
-                S( 0.30,hy-0.12,ez-0.04, 0.075, C(0xff9db4), 0.10); }
+  /* ---- mouth ---- */
+  if(ch.grin){                                    // wide Cheshire smile with teeth
+    B(0,hy-0.20,ez+0.02, 0.46,0.11,0.05, C(0x5a1b2a));
+    for(let k=-2;k<=2;k++) B(k*0.085,hy-0.17,ez+0.04, 0.06,0.07,0.04, WHITE);
+    B(-0.20,hy-0.13,ez+0.03, 0.09,0.11,0.04, WHITE, 0.4);
+    B( 0.20,hy-0.13,ez+0.03, 0.09,0.11,0.04, WHITE,-0.4);
+  } else if(airborne){
+    S(0,hy-0.20,ez+0.02, 0.11, C(0x8c2b3a), 0.17);
+    S(0,hy-0.23,ez+0.05, 0.06, C(0xff8fa3), 0.07);
+  } else {
+    B(-0.09,hy-0.19,ez+0.02, 0.10,0.05,0.04, C(0x8c2b3a), 0.5);
+    B( 0.00,hy-0.22,ez+0.03, 0.12,0.05,0.04, C(0x8c2b3a));
+    B( 0.09,hy-0.19,ez+0.02, 0.10,0.05,0.04, C(0x8c2b3a),-0.5);
+  }
+  if(ch.blush){ S(-0.31,hy-0.11,ez-0.03, 0.085, C(0xff9db4), 0.11);
+                S( 0.31,hy-0.11,ez-0.03, 0.085, C(0xff9db4), 0.11); }
 
-  /* ---- per-kind features ---- */
+  /* ---- hair / animal features ---- */
   if(ch.kind==='human'){
-    B(0,hy+0.36,0, 0.74,0.18,0.70, ch.hair);                       // hair cap
-    B(0,hy+0.10,-0.34, 0.72,0.52,0.14, ch.hair);                   // back hair
-    if(ch.hairStyle==='long'){ B(-0.38,hy-0.10,-0.16, 0.14,0.62,0.34, ch.hair);
-                               B( 0.38,hy-0.10,-0.16, 0.14,0.62,0.34, ch.hair); }
-    if(ch.hairStyle==='bob'){ B(-0.37,hy+0.06,-0.06, 0.12,0.40,0.52, ch.hair);
-                              B( 0.37,hy+0.06,-0.06, 0.12,0.40,0.52, ch.hair); }
-    if(ch.hairStyle==='bacon'){ const lit=mixc(ch.hair,[1,1,1],0.25);
+    B(0,hy+0.36,0, 0.74,0.18,0.70, ch.hair);
+    B(0,hy+0.10,-0.34, 0.72,0.52,0.14, ch.hair);
+    if(ch.bangs) B(0,hy+0.30,0.31, 0.72,0.20,0.10, ch.hair);
+    const st=ch.hairStyle;
+    if(st==='long'){ B(-0.38,hy-0.10,-0.16, 0.14,0.62,0.34, ch.hair);
+                     B( 0.38,hy-0.10,-0.16, 0.14,0.62,0.34, ch.hair); }
+    if(st==='bob'){ B(-0.37,hy+0.06,-0.06, 0.12,0.40,0.52, ch.hair);
+                    B( 0.37,hy+0.06,-0.06, 0.12,0.40,0.52, ch.hair); }
+    if(st==='pigtails'){
+      for(const sx of [-1,1]){
+        S(sx*0.46,hy+0.20,-0.02, 0.20, ch.hair, 0.34);                  // tie puff
+        S(sx*0.54,hy-0.08,-0.06, 0.23, ch.hair, 0.46);                  // pigtail body
+        S(sx*0.56,hy-0.40,-0.08, 0.19, mixc(ch.hair,[1,1,1],0.10), 0.36);
+        Cy(sx*0.46,hy+0.20,-0.02, 0.13,0.10, ch.tie||C(0x9fd8ff));      // hair tie
+      }
+      if(ch.bow){ for(const sx of [-1,1]){
+        B(sx*0.46,hy+0.40,0.02, 0.20,0.10,0.10, ch.bow, sx*0.4);
+        S(sx*0.46,hy+0.40,0.02, 0.055, mixc(ch.bow,[1,1,1],0.3), 0.09); } }
+    }
+    if(st==='braid'){
+      for(let k=0;k<5;k++) S(0.06,hy+0.10-k*0.26,-0.40-k*0.02, 0.17-k*0.012, k%2?mixc(ch.hair,[1,1,1],0.12):ch.hair, 0.30);
+      S(0.06,hy-1.18,-0.48, 0.09, ch.tie||C(0xd9b3ff), 0.14);
+    }
+    if(st==='bacon'){ const lit=mixc(ch.hair,[1,1,1],0.25);
       for(let k=0;k<3;k++){ const o=-0.24+k*0.24;
-        S(o,hy+0.44,0.10, 0.17, lit, 0.30); S(o,hy+0.40,0.28, 0.15, ch.hair, 0.26); } }
-    if(ch.hairStyle==='spiky'){ for(let k=0;k<5;k++){ const a=(k-2)*0.16;
+        S(o,hy+0.44,0.10, 0.17, lit, 0.30); S(o,hy+0.40,0.28, 0.15, ch.hair, 0.26); }
+      for(const sx of [-1,1]) S(sx*0.40,hy+0.22,0.10, 0.15, ch.hair, 0.44); }
+    if(st==='spiky'){ for(let k=0;k<5;k++){ const a=(k-2)*0.16;
         K(a, hy+0.52, -0.02+Math.abs(a)*0.1, 0.11,0.30, ch.hair, a*0.6); } }
     if(ch.catBand){ B(0,hy+0.46,0, 0.66,0.10,0.62, C(0x22222a));
       K(-0.22,hy+0.66,0, 0.13,0.28, C(0x22222a)); K(0.22,hy+0.66,0, 0.13,0.28, C(0x22222a));
       K(-0.22,hy+0.64,0.03, 0.07,0.18, C(0xff9ecb)); K(0.22,hy+0.64,0.03, 0.07,0.18, C(0xff9ecb)); }
   }
   if(ch.kind==='cat'){
-    K(-0.24,hy+0.42,0, 0.16,0.34, ch.hair); K(0.24,hy+0.42,0, 0.16,0.34, ch.hair);
-    K(-0.24,hy+0.40,0.04, 0.09,0.22, C(0xffb4c8)); K(0.24,hy+0.40,0.04, 0.09,0.22, C(0xffb4c8));
-    S(0,hy-0.12,ez+0.08, 0.15, mixc(ch.skin,[1,1,1],0.35), 0.20);   // muzzle
-    S(0,hy-0.06,ez+0.16, 0.06, C(0xff8fa3), 0.08);                   // nose
-    for(let k=-1;k<=1;k+=2){ B(k*0.30,hy-0.12,ez+0.08, 0.26,0.02,0.02, C(0xffffff), k*0.12); }
-    B(0,hy+0.36,0, 0.62,0.12,0.58, mixc(ch.hair,[0,0,0],0.1));       // head fur
-    for(let k=0;k<4;k++) S(-0.05, -0.55+k*0.02, -0.40-k*0.22, 0.13-k*0.015, ch.hair, 0.22); // tail
+    K(-0.26,hy+0.44,0, 0.19,0.38, ch.hair); K(0.26,hy+0.44,0, 0.19,0.38, ch.hair);
+    K(-0.26,hy+0.42,0.04, 0.10,0.24, C(0xffb4c8)); K(0.26,hy+0.42,0.04, 0.10,0.24, C(0xffb4c8));
+    S(0,hy-0.13,ez+0.07, 0.16, mixc(ch.skin,[1,1,1],0.35), 0.21);
+    S(0,hy-0.06,ez+0.15, 0.065, C(0xb0559a), 0.09);
+    for(let k=-1;k<=1;k+=2){ B(k*0.32,hy-0.13,ez+0.06, 0.30,0.022,0.022, WHITE, k*0.10);
+                             B(k*0.32,hy-0.20,ez+0.06, 0.28,0.022,0.022, WHITE, k*-0.10); }
+    if(ch.stripes){ for(let k=0;k<3;k++) B(-0.10+k*0.10,hy+0.35,-0.06, 0.07,0.16,0.60, mixc(ch.hair,[0,0,0],0.35));
+      B(0,hy+0.36,0, 0.62,0.12,0.58, mixc(ch.hair,[0,0,0],0.10)); }
+    else B(0,hy+0.36,0, 0.62,0.12,0.58, mixc(ch.hair,[0,0,0],0.10));
+    for(let k=0;k<4;k++) S(-0.05,-0.55+k*0.02,-0.40-k*0.22, 0.13-k*0.015, k%2&&ch.stripes?mixc(ch.hair,[0,0,0],0.3):ch.hair, 0.22);
   }
   if(ch.kind==='dog'){
-    B(-0.36,hy+0.16,-0.02, 0.16,0.46,0.30, ch.hair, 0.18);           // floppy ears
+    B(-0.36,hy+0.16,-0.02, 0.16,0.46,0.30, ch.hair, 0.18);
     B( 0.36,hy+0.16,-0.02, 0.16,0.46,0.30, ch.hair,-0.18);
-    B(0,hy-0.14,ez+0.10, 0.34,0.24,0.26, mixc(ch.skin,[1,1,1],0.30)); // snout
-    S(0,hy-0.06,ez+0.24, 0.08, C(0x2a2020), 0.11);                    // nose
-    B(0,hy-0.26,ez+0.12, 0.12,0.06,0.14, C(0xff8fa3));                // tongue
+    B(0,hy-0.14,ez+0.10, 0.34,0.24,0.26, mixc(ch.skin,[1,1,1],0.30));
+    S(0,hy-0.06,ez+0.24, 0.085, C(0x2a2020), 0.11);
+    B(0,hy-0.27,ez+0.12, 0.12,0.06,0.14, C(0xff8fa3));
     B(0,hy+0.36,0, 0.64,0.12,0.60, ch.hair);
-    for(let k=0;k<3;k++) S(0, -0.45+k*0.10, -0.40-k*0.18, 0.12, ch.hair, 0.20); // wagging tail
+    for(let k=0;k<3;k++) S(0,-0.45+k*0.10,-0.40-k*0.18, 0.12, ch.hair, 0.20);
   }
   if(ch.kind==='parrot'){
-    K(0,hy-0.04,ez+0.16, 0.13,0.30, C(0xffa726), 0, 1.57);            // beak (rotated fwd)
+    K(0,hy-0.04,ez+0.16, 0.13,0.30, C(0xffa726), 0, 1.57);
     for(let k=0;k<3;k++) K((k-1)*0.13, hy+0.44, -0.02, 0.09,0.34, k===1?C(0xff4d4d):ch.hair, (k-1)*0.3);
-    B(-0.50,-0.10,-0.02, 0.12,0.70,0.42, C(0x2f9ad4), 0.15);          // wings
+    B(-0.50,-0.10,-0.02, 0.12,0.70,0.42, C(0x2f9ad4), 0.15);
     B( 0.50,-0.10,-0.02, 0.12,0.70,0.42, C(0x2f9ad4),-0.15);
     for(let k=-1;k<=1;k++) B(k*0.13,-0.55,-0.42, 0.12,0.50,0.10, k===0?C(0xff4d4d):C(0xffd23d), k*0.2);
-    S(0,-0.16,0.28, 0.26, C(0xffe9a8), 0.42);                          // belly patch
+    S(0,-0.16,0.28, 0.26, C(0xffe9a8), 0.42);
   }
 }
 
