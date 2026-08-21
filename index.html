@@ -518,10 +518,13 @@ function drawGlove(B,S, lx,ly,lz, col, flip){
 
 function drawChar(ch, x,y,z, face, walk, airborne, t){
   const cs=Math.cos(face), sn=Math.sin(face);
-  const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, sx,sy,sz, c, face, rz);
-  const S=(lx,ly,lz,r,c,sy)=>sph(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, r, c, sy, face);
-  const K=(lx,ly,lz,r,h,c,rz)=>cone(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, r,h, c, face, rz);
-  const Cy=(lx,ly,lz,r,h,c,rz)=>cyl(x+lx*cs+lz*sn, y+ly, z-lx*sn+lz*cs, r,h, c, face, rz);
+  // The soles are modelled at local y=-1.32 but the collision floor is -hh (-0.9),
+  // so lift every part by this much or the character sinks into the platform.
+  const FT=0.42;
+  const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(x+lx*cs+lz*sn, y+ly+FT, z-lx*sn+lz*cs, sx,sy,sz, c, face, rz);
+  const S=(lx,ly,lz,r,c,sy)=>sph(x+lx*cs+lz*sn, y+ly+FT, z-lx*sn+lz*cs, r, c, sy, face);
+  const K=(lx,ly,lz,r,h,c,rz)=>cone(x+lx*cs+lz*sn, y+ly+FT, z-lx*sn+lz*cs, r,h, c, face, rz);
+  const Cy=(lx,ly,lz,r,h,c,rz)=>cyl(x+lx*cs+lz*sn, y+ly+FT, z-lx*sn+lz*cs, r,h, c, face, rz);
 
   const sw=Math.sin(walk)*0.34, bob=Math.abs(Math.sin(walk))*0.04;
   const blink=(Math.sin(t*1.7)>0.985);
@@ -694,54 +697,91 @@ const THEMES=[
     accent:C(0x6a3aa5), coinCol:C(0x6b7bff) },
 ];
 
-/* fruit palettes: [rind/skin, flesh, detail] */
+/* Fruit definitions. "whole" fruits are real 3D fruit with the top sliced
+   flat (that cut face is exactly the surface you stand on); "slice" fruits
+   are proper cross-section slices with rind, pith, flesh and seeds. */
 const FRUIT={
-  cherry:    { skin:C(0xff2f55), flesh:C(0xff7d92), dot:C(0xa8122e), stem:true,  leaf:true },
-  strawberry:{ skin:C(0xff3b57), flesh:C(0xff8298), dot:C(0xfff0b8), stem:false, leaf:true, seeds:true },
-  blueberry: { skin:C(0x6273f0), flesh:C(0x9aa6ff), dot:C(0x36409c), stem:false, leaf:true, crown:true },
-  watermelon:{ skin:C(0x46b455), flesh:C(0xff6d7e), dot:C(0x2a7a37), seeds:true, rind:C(0xe8f7cc) },
-  pineapple: { skin:C(0xf5bb35), flesh:C(0xffee7a), dot:C(0xc98b1e), grid:true, crown:true },
-  orange:    { skin:C(0xff9526), flesh:C(0xffc35e), dot:C(0xd96e10), wedges:true },
-  kiwi:      { skin:C(0xa5844a), flesh:C(0xb0e06a), dot:C(0x3d7028), seeds:true, rind:C(0x836636) },
+  cherry:    { style:'whole', skin:C(0xd6183f), cut:C(0xff96a6), core:C(0x8a5a2b), stem:true, leaf:true },
+  strawberry:{ style:'whole', skin:C(0xf03047), cut:C(0xffdfe4), core:C(0xfff2f4), taper:true, seedsOut:true, calyx:true },
+  blueberry: { style:'whole', skin:C(0x4f61d8), cut:C(0xa8b2ff), core:C(0x8f9bf0), crown:true, leaf:true },
+  raspberry: { style:'cluster', skin:C(0xe0335f), cut:C(0xffb6c8), bump:C(0xf4557d) },
+  watermelon:{ style:'slice', rind:C(0x2f8b3f), pith:C(0xe9f7cf), flesh:C(0xff5d6e), seeds:C(0x2b2b2b) },
+  orange:    { style:'slice', rind:C(0xff8c1a), pith:C(0xffe3bb), flesh:C(0xffab3d), wedges:9 },
+  kiwi:      { style:'slice', rind:C(0x8a6a3a), pith:C(0xdcecac), flesh:C(0x9bd35a), core:C(0xf4f8dd), seeds:C(0x2b2b2b), fuzzy:true },
+  pineapple: { style:'slice', rind:C(0xd9a12a), pith:C(0xffe89a), flesh:C(0xffd94d), core:C(0xfff3c0), crosshatch:true },
   banana:    { skin:C(0xffe04a), flesh:C(0xfff8cc), dot:C(0x9c7a1e) },
 };
 
-/* =========================================================================
-   FRUIT PLATFORM RENDERING
-   Every fruit has a FLAT top exactly at the collision surface, with bubbly
-   decoration below/around it, so what you see is what you can stand on.
-   ========================================================================= */
-function bubbleRing(x,top,z,r,n,size,col,phase){
-  for(let i=0;i<n;i++){ const a=i/n*6.2832+(phase||0);
-    sph(x+Math.cos(a)*r*0.93, top-size*0.35, z+Math.sin(a)*r*0.93, size, col, size*1.5); }
+/* a whole fruit with its top cut flat: the sphere is sized and sunk so that its
+   cross-section exactly at the standing plane has radius r */
+function fruitBody(s,f,r,top){
+  const R=r*1.18, d=Math.sqrt(Math.max(0.02,R*R-r*r)), cy=top-d;
+  sph(s.x,cy,s.z, R, f.skin, R*2);
+  if(f.taper){ cone(s.x, cy-R*0.72, s.z, R*0.92, R*1.5, f.skin, s.ang||0, 3.1416); }
+  return {R,cy};
+}
+function cutFace(s,f,r,top){
+  cyl(s.x, top-0.03, s.z, r*0.995, 0.10, f.cut);          // the sliced surface
+  cyl(s.x, top-0.06, s.z, r, 0.06, mixc(f.skin,[1,1,1],0.10)); // skin edge
+}
+function drawWhole(s,f,r,top,t){
+  const a0=s.ang||0;
+  const {R,cy}=fruitBody(s,f,r,top);
+  cutFace(s,f,r,top);
+  if(f.core) cyl(s.x, top+0.03, s.z, r*0.22, 0.06, f.core);       // pit / pale core
+  if(f.seedsOut){ for(let i=0;i<22;i++){ const a=a0+i*2.399, yy=cy-R*0.25-((i%5)*R*0.18);
+      const rr=Math.sqrt(Math.max(0,R*R-(yy-cy)*(yy-cy)))*0.99;
+      sph(s.x+Math.cos(a)*rr, yy, s.z+Math.sin(a)*rr, R*0.045, C(0xffe9a8)); } }
+  if(f.crown){ for(let k=0;k<6;k++){ const a=a0+k/6*6.2832;
+      box(s.x+Math.cos(a)*r*0.30, top+0.05, s.z+Math.sin(a)*r*0.30, r*0.26,0.05,0.09, mixc(f.skin,[0,0,0],0.25), a); } }
+  if(f.calyx){ for(let k=0;k<7;k++){ const a=a0+k/7*6.2832;
+      box(s.x+Math.cos(a)*r*0.80, top+0.10, s.z+Math.sin(a)*r*0.80, r*0.52,0.10,r*0.26, C(0x4f9a3a), a, 0.30); } }
+  if(f.stem){ const sx=s.x+Math.cos(a0)*r*0.45, sz=s.z+Math.sin(a0)*r*0.45;
+    for(let k=0;k<5;k++) cyl(sx+k*0.06, top+0.25+k*0.30, sz, 0.075, 0.36, C(0x6d8a3a), 0, 0.10*k);
+    // a second cherry hanging off the stem, so it reads as a cherry pair
+    sph(sx+0.62, top+1.05, sz, r*0.30, f.skin, r*0.60);
+    cyl(sx+0.42, top+1.42, sz, 0.06, 0.5, C(0x6d8a3a), 0, 0.5); }
+  if(f.leaf){ const w=Math.sin(t*2+s.z)*0.10;
+    box(s.x-r*0.55, top+0.32, s.z+r*0.18, 0.86,0.10,0.40, C(0x4f9a3a), a0+0.6, 0.28+w);
+    box(s.x+r*0.55, top+0.32, s.z-r*0.18, 0.86,0.10,0.40, C(0x67b04a), a0-0.6, -0.28-w); }
+}
+/* a real cross-section slice: rind band, pith ring, flesh, wedges, seeds */
+function drawSlice(s,f,r,top,t){
+  const a0=s.ang||0, h=s.h;
+  cyl(s.x, s.y, s.z, r, h, f.rind);                       // rind all the way round
+  cyl(s.x, top-h*0.10, s.z, r*0.90, h*0.26, f.pith);      // pale pith just inside
+  cyl(s.x, top-h*0.04, s.z, r*0.82, h*0.16, f.flesh);     // flesh face
+  if(f.wedges){ for(let k=0;k<f.wedges;k++){ const a=a0+k/f.wedges*3.1416;
+      box(s.x, top+0.03, s.z, r*1.62, 0.05, r*0.055, f.pith, a); }
+    cyl(s.x, top+0.05, s.z, r*0.13, 0.06, f.pith); }
+  if(f.seeds){ for(let i=0;i<12;i++){ const a=a0+i/12*6.2832;
+      const rr = f.core? r*0.42 : r*0.52+((i%2)*r*0.14);
+      sph(s.x+Math.cos(a)*rr, top+0.05, s.z+Math.sin(a)*rr, r*0.055, f.seeds, r*0.03); } }
+  if(f.core) cyl(s.x, top+0.04, s.z, r*0.26, 0.06, f.core);
+  if(f.crosshatch){ for(let k=0;k<16;k++){ const a=a0+k/16*6.2832;
+      box(s.x+Math.cos(a)*r*0.97, top-h*0.30, s.z+Math.sin(a)*r*0.97, r*0.14,h*0.5,r*0.14, mixc(f.rind,[0,0,0],0.2), a, 0.5); }
+    cyl(s.x, top+0.05, s.z, r*0.30, 0.06, f.core); }
+  if(f.fuzzy){ for(let k=0;k<18;k++){ const a=a0+k/18*6.2832;
+      sph(s.x+Math.cos(a)*r*0.99, top-h*0.34, s.z+Math.sin(a)*r*0.99, r*0.055, mixc(f.rind,[1,1,1],0.25)); } }
+}
+/* raspberry: a real berry built from packed drupelets, top cut flat */
+function drawCluster(s,f,r,top,t){
+  const R=r*1.18, d=Math.sqrt(Math.max(0.02,R*R-r*r)), cy=top-d;
+  sph(s.x,cy,s.z, R*0.96, f.skin, R*1.9);
+  for(let ring=0; ring<4; ring++){
+    const ry=top-0.10-ring*(R*0.42), k=Math.max(0.15,1-Math.pow((ry-cy)/R,2));
+    const rr=Math.sqrt(k)*R*0.98, n=Math.max(5,Math.round(10*Math.sqrt(k)));
+    for(let i=0;i<n;i++){ const a=i/n*6.2832+ring*0.5+(s.ang||0);
+      sph(s.x+Math.cos(a)*rr, ry, s.z+Math.sin(a)*rr, R*0.17, ring%2?f.bump:f.skin, R*0.30); } }
+  cyl(s.x, top-0.03, s.z, r*0.99, 0.10, f.cut);
+  for(let i=0;i<9;i++){ const a=(s.ang||0)+i/9*6.2832;
+    sph(s.x+Math.cos(a)*r*0.86, top+0.02, s.z+Math.sin(a)*r*0.86, r*0.15, f.bump, r*0.16); }
 }
 function drawFruitTop(s,t){
-  const f=FRUIT[s.fruit]||FRUIT.cherry, r=s.r, top=s.y+s.h/2, mid=s.y;
-  // main body: flat-topped cylinder (exact standing surface)
-  cyl(s.x, mid, s.z, r, s.h, f.skin, s.ang||0);
-  // flesh inset on top so it reads as fruit, not a coin
-  cyl(s.x, top-s.h*0.06, s.z, r*0.86, s.h*0.16, f.flesh, s.ang||0);
-  // rounded underside — the bubbly bit
-  sph(s.x, mid-s.h*0.35, s.z, r*0.98, f.skin, r*1.05);
-  bubbleRing(s.x, top, s.z, r, 9, r*0.20, mixc(f.skin,[1,1,1],0.12), (s.ang||0));
-
-  const a0=s.ang||0;
-  if(f.wedges){ for(let k=0;k<6;k++){ const a=a0+k/6*3.1416;
-      box(s.x, top+0.01, s.z, r*1.6, 0.03, 0.07, f.dot, a); } }
-  if(f.grid){ for(let k=0;k<4;k++){ const a=a0+k/4*3.1416;
-      box(s.x, top+0.01, s.z, r*1.5, 0.03, 0.10, f.dot, a); }
-    for(let i=0;i<8;i++){ const a=a0+i/8*6.2832;
-      sph(s.x+Math.cos(a)*r*0.55, top+0.02, s.z+Math.sin(a)*r*0.55, r*0.09, f.dot, r*0.05); } }
-  if(f.seeds){ for(let i=0;i<10;i++){ const a=a0+i/10*6.2832+0.3;
-      sph(s.x+Math.cos(a)*r*0.60, top+0.02, s.z+Math.sin(a)*r*0.60, r*0.07, f.dot, r*0.05); } }
-  if(f.rind){ cyl(s.x, top-s.h*0.02, s.z, r*0.93, s.h*0.10, f.rind, a0); }
-  if(f.stem){ cyl(s.x+r*0.15, top+0.55, s.z, 0.07, 1.1, C(0x6d8a3a), 0, 0.12);
-    sph(s.x+r*0.15, top+1.1, s.z, 0.12, C(0x86a84a)); }
-  if(f.leaf){ const lw=Math.sin(t*2+s.z)*0.12;
-    box(s.x-r*0.30, top+0.30, s.z+r*0.10, 0.72,0.10,0.34, C(0x4f9a3a), a0+0.5, 0.25+lw);
-    box(s.x+r*0.30, top+0.30, s.z-r*0.10, 0.72,0.10,0.34, C(0x67b04a), a0-0.5, -0.25-lw); }
-  if(f.crown){ for(let k=0;k<5;k++){ const a=a0+k/5*6.2832;
-      cone(s.x+Math.cos(a)*r*0.22, top+0.34, s.z+Math.sin(a)*r*0.22, 0.13,0.62, C(0x5aa03a), 0, Math.cos(a)*0.35); } }
+  const f=FRUIT[s.fruit]||FRUIT.cherry, r=s.r, top=s.y+s.h/2;
+  if(f.style==='slice') drawSlice(s,f,r,top,t);
+  else if(f.style==='cluster') drawCluster(s,f,r,top,t);
+  else drawWhole(s,f,r,top,t);
 }
 
 /* long banana bridge segment (box collision, banana look) */
@@ -806,23 +846,42 @@ function drawEnv(t,T){
     box(bx+0.42,b.y+flap*0.22,bz, 0.62,0.09,0.24, col, -a, -0.5-flap); }
 }
 function drawBoat(s,t){
-  const rock=Math.sin(t*0.8)*0.035;
-  const hullC=C(0x9a5f2c), deckC=C(0xc98b52), trimC=C(0xf2e2c0);
-  const x=s.x, y=s.y, z=s.z, w=s.w, d=s.d;
-  box(x,y,z, w,s.h,d, hullC, 0, rock);                       // hull
-  box(x,y+s.h*0.48,z, w*0.94,0.16,d*0.94, deckC, 0, rock);   // deck
-  box(x,y+0.05,z, w*1.02,0.22,d*1.02, trimC, 0, rock);       // gunwale stripe
-  cone(x, y-0.1, z+d*0.62, w*0.42, 1.7, hullC, 0, 1.57);     // bow point
-  box(x, y+0.35, z-d*0.52, w*0.86,0.7,0.22, hullC, 0, rock); // stern wall
-  // mast + sail + flag
-  const mz=z-d*0.34;
-  cyl(x-w*0.24, y+3.0, mz, 0.13, 5.6, C(0x7a4a22), 0, rock);
-  box(x-w*0.24+1.5, y+3.6, mz, 2.6,3.2,0.10, C(0xfdfbf2), 0, rock+0.06);
-  box(x-w*0.24+1.5, y+3.6, mz, 2.62,0.5,0.12, C(0xff6b81), 0, rock+0.06);
-  box(x-w*0.24, y+5.9, mz, 1.0,0.5,0.06, C(0xffd34d), 0, rock);
-  // life ring + crates for charm
-  tor(x-w*0.36, y+0.55, z+d*0.30, 0.55, C(0xff4d4d), 0, 1.57);
-  box(x+w*0.34, y+0.62, z-d*0.24, 0.8,0.7,0.8, C(0xb4762f), 0.4, rock);
+  const rock=Math.sin(t*0.8)*0.022;
+  const x=s.x, y=s.y, z=s.z, w=s.w, d=s.d, h=s.h;
+  const HULL=C(0xf2f5f8), NAVY=C(0x1f3a63), TEAK=C(0xc98b52), GLASS=C(0x2e4d6b), TRIM=C(0xd8dee6);
+  const bow=z+d*0.5;
+  // hull: white topsides, navy boot stripe, teak deck
+  box(x,y,z, w,h,d, HULL, 0, rock);
+  box(x,y-h*0.34,z, w*1.01,h*0.26,d*1.005, NAVY, 0, rock);
+  box(x,y-h*0.52,z, w*0.96,h*0.20,d*0.98, C(0x16233a), 0, rock);
+  box(x,y+h*0.50,z, w*0.95,0.16,d*0.96, TEAK, 0, rock);       // deck
+  box(x,y+h*0.46,z, w*1.005,0.30,d*0.99, TRIM, 0, rock);      // gunwale
+  // raked bow, built from tapering slabs (a cone here points along the wrong axis)
+  for(let k=0;k<5;k++){ const u=(k+1)/5;
+    box(x, y+h*(0.10+0.06*k), bow+u*w*0.16, w*(0.86-0.16*k), h*(0.80-0.10*k), w*0.36, HULL, 0, rock); }
+  box(x, y+h*0.50, bow-0.2, w*0.60,0.16,1.8, TEAK, 0, rock);
+  // superstructure kept at the STERN so the view forward stays clear
+  const sz0=z-d*0.26;
+  box(x, y+h*0.50+0.85, sz0, w*0.80,1.7,d*0.34, HULL, 0, rock);
+  for(let k=-2;k<=2;k++) box(x+k*w*0.15, y+h*0.50+1.05, sz0+d*0.17, w*0.11,0.62,0.10, GLASS, 0, rock);
+  box(x-w*0.41, y+h*0.50+1.05, sz0, 0.10,0.62,d*0.30, GLASS, 0, rock);
+  box(x+w*0.41, y+h*0.50+1.05, sz0, 0.10,0.62,d*0.30, GLASS, 0, rock);
+  // flybridge + mast + radar, all well behind the player
+  box(x, y+h*0.50+1.95, sz0-d*0.02, w*0.62,0.36,d*0.26, TRIM, 0, rock);
+  for(const sx of [-1,1]) for(const dz2 of [-1,1])
+    cyl(x+sx*w*0.28, y+h*0.50+2.30, sz0+dz2*d*0.10, 0.05,0.62, TRIM, 0, rock);
+  box(x, y+h*0.50+2.62, sz0, w*0.58,0.10,d*0.24, HULL, 0, rock);
+  cyl(x, y+h*0.50+3.30, sz0-d*0.06, 0.08, 1.4, TRIM, 0, rock);
+  box(x, y+h*0.50+4.00, sz0-d*0.06, 1.1,0.10,0.28, TRIM, t*1.6, rock);
+  box(x+0.55, y+h*0.50+3.55, sz0-d*0.06, 0.9,0.44,0.05, C(0xff6b81), 0, rock);
+  // bow rails so the foredeck reads as somewhere you stand
+  for(let k=0;k<7;k++){ const zz=z+d*0.10+k*d*0.055;
+    for(const sx of [-1,1]) cyl(x+sx*w*0.46, y+h*0.50+0.42, zz, 0.045,0.85, TRIM, 0, rock); }
+  for(const sx of [-1,1]) box(x+sx*w*0.46, y+h*0.50+0.84, z+d*0.26, 0.06,0.06,d*0.36, TRIM, 0, rock);
+  // deck details
+  tor(x-w*0.40, y+h*0.50+0.55, z-d*0.06, 0.55, C(0xff4d4d), 0, 1.5708);
+  box(x+w*0.22, y+h*0.50+0.35, z+d*0.06, 1.5,0.30,0.9, TRIM, 0.3, rock);
+  for(const sx of [-1,1]) box(x+sx*w*0.22, y+h*0.50+0.42, z-d*0.06, 0.7,0.5,1.6, C(0xfff0d0), 0, rock);
 }
 
 /* =========================================================================
@@ -837,10 +896,11 @@ function buildLevel(idx){
   let cx=0, cy=0, cz=0;
 
   // ---- the boat you set sail from ----
-  const boat={type:'box',boat:true,x:0,y:0,z:0,w:10,h:1.6,d:6.5,c:C(0x9a5f2c),bx:0,by:0,bz:0};
+  const boat={type:'box',boat:true,x:0,y:0,z:0,w:11,h:2.0,d:17,c:C(0xf2f5f8),bx:0,by:0,bz:0};
   solids.push(boat);
-  const spawn={x:0,y:boat.y+boat.h/2+1.0,z:0.6};
-  checks.push({x:0,y:boat.y+boat.h/2+0.4,z:0.6});
+  // start on the foredeck, facing the towers, with the superstructure behind
+  const spawn={x:0,y:boat.y+boat.h/2+1.0,z:5.4};
+  checks.push({x:0,y:boat.y+boat.h/2+0.4,z:5.4});
 
   function disc(dx,dz,dy,r,extra){
     cx+=dx; cz+=dz; cy+=dy;
@@ -871,7 +931,7 @@ function buildLevel(idx){
 
   if(idx===0){
     /* CHERRY — gentle: big fruit steps, a mover, a spinner, fat spikes, banana run */
-    let s=disc(0, 9.5, 1.4, 3.2); coinsOn(s,3);
+    let s=disc(0, 14.6, 1.4, 3.2); coinsOn(s,3);
     s=disc(2.2, 8.5, 1.5, 3.0);   coinsOn(s,3);
     s=disc(-2.4, 8.5, 1.5, 3.0);  coinsOn(s,3); chk(s);
     s=disc(-0.5, 9.0, 1.5, 2.9, {axis:'x',amp:2.6,mspd:0.8,ph:0}); coinsOn(s,2);
@@ -894,7 +954,7 @@ function buildLevel(idx){
 
   if(idx===1){
     /* STRAWBERRY — trampoline over a wall, fan lift, spinner, mover, spikes */
-    let s=disc(0, 9.0, 1.4, 3.2); coinsOn(s,3);
+    let s=disc(0, 14.4, 1.4, 3.2); coinsOn(s,3);
     s=disc(1.8, 8.6, 1.2, 3.0);   coinsOn(s,3);
     // trampoline (its own landing surface) then a wall to clear
     const tr=disc(-1.8, 8.8, 0.6, 3.0, {tramp:true}); tr.fruit='watermelon';
@@ -922,7 +982,7 @@ function buildLevel(idx){
 
   if(idx===2){
     /* BLUEBERRY — balloon swing, down-fan, spinner, mover, long banana finish */
-    let s=disc(0, 9.0, 1.4, 3.2); coinsOn(s,3);
+    let s=disc(0, 14.4, 1.4, 3.2); coinsOn(s,3);
     s=disc(-2.0, 8.6, 1.4, 3.0);  coinsOn(s,3); chk(s);
     // balloon swing across a big gap
     s=disc(2.0, 8.6, 1.2, 3.0);   coinsOn(s,2);
