@@ -17,8 +17,10 @@ Climb up **Cherry → Strawberry → Blueberry**, grabbing coins and dodging haz
 1. In this repo go to **Settings → Pages**.
 2. Under *Build and deployment* → *Source*, pick **Deploy from a branch**.
 3. Choose branch **`main`**, folder **`/ (root)`**, and hit **Save**.
-4. Wait ~1 minute, then open this on the phone:
+4. Wait ~1 minute, then open the address Pages shows you (the green *"Your site is live at…"* banner) on the phone:
    **`https://ledocteurpeste.github.io/iOS-Local-Browser-Game/`**
+
+> **Getting a 404?** The link doesn't exist until Pages is switched on, it takes a minute or two to build after you save, and on a free plan Pages only publishes **public** repos — if this repo is private, make it public under *Settings → General → Change visibility*. The URL is also case-sensitive, so copy the one Pages displays.
 
 Turn the phone sideways and tap **Begin Game**. In Safari you can also tap **Share → Add to Home Screen** to get a real app icon that opens fullscreen.
 
