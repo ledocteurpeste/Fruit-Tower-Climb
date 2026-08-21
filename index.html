@@ -1058,7 +1058,9 @@ function frame(now){ let dt=(now-last)/1000; last=now; if(dt>0.05)dt=0.05; const
       if(keys['a']||keys['arrowleft'])ix-=1; if(keys['d']||keys['arrowright'])ix+=1;
       if(keys['w']||keys['arrowup'])iz-=1; if(keys['s']||keys['arrowdown'])iz+=1;
       const mag=Math.hypot(ix,iz); if(mag>1){ix/=mag;iz/=mag;}
-      const fX=-Math.sin(cam.yaw), fZ=-Math.cos(cam.yaw), rX=fZ, rZ=-fX;
+      // Camera-relative basis. Screen-right is cross(forward, up) = (-fZ, fX);
+      // using (fZ, -fX) points the other way and swaps left/right.
+      const fX=-Math.sin(cam.yaw), fZ=-Math.cos(cam.yaw), rX=-fZ, rZ=fX;
       const wx=rX*ix+fX*(-iz), wz=rZ*ix+fZ*(-iz);
       physics(dt,t,wx,wz);
       if((now|0)%4===0) updateHUD();
