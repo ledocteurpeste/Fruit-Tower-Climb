@@ -204,7 +204,6 @@
   <div id="charTop">
     <div class="kicker">Choose your climber!</div>
     <div id="charName">—</div>
-    <div id="charDesc">—</div>
   </div>
   <div id="charMid">
     <button class="arrow" id="charPrev">◀</button>
@@ -382,6 +381,15 @@ const SPH=(()=>{ const LA=12,LO=18,v=[],i=[];
     i.push(p,q,p+1, p+1,q,q+1); }
   return makeMesh(v,i); })();
 
+// lower hemisphere: flat cut face at y=0, dome hanging below (radius .5)
+const HEMI=(()=>{ const LA=9,LO=20,v=[],i=[];
+  for(let a=0;a<=LA;a++){ const th=Math.PI/2 + a/LA*(Math.PI/2), cy=Math.cos(th), rr=Math.sin(th);
+    for(let b=0;b<=LO;b++){ const ph=b/LO*6.2832, x=Math.cos(ph)*rr, z=Math.sin(ph)*rr;
+      v.push(x*.5, cy*.5, z*.5, x, cy, z); } }
+  for(let a=0;a<LA;a++)for(let b=0;b<LO;b++){ const q=a*(LO+1)+b, w2=q+LO+1;
+    i.push(q,w2,q+1, q+1,w2,w2+1); }
+  return makeMesh(v,i); })();
+
 // torus: outer radius .5, tube .13 (used for fan rims, rings, life-rings)
 const TOR=(()=>{ const N=22,Mm=10,R=0.37,r=0.13,v=[],i=[];
   for(let a=0;a<=N;a++){ const u=a/N*6.2832, cu=Math.cos(u), su=Math.sin(u);
@@ -400,6 +408,8 @@ function cyl(x,y,z,r,h,c,ry,rz){ draw(CYL,M.compose(x,y,z,ry||0,r*2,h,r*2,rz),c)
 function cone(x,y,z,r,h,c,ry,rz){ draw(CONE,M.compose(x,y,z,ry||0,r*2,h,r*2,rz),c); }
 function sph(x,y,z,r,c,sy,ry){ draw(SPH,M.compose(x,y,z,ry||0,r*2,(sy===undefined?r*2:sy),r*2,0),c); }
 function tor(x,y,z,r,c,ry,rz){ draw(TOR,M.compose(x,y,z,ry||0,r*2,r*2,r*2,rz),c); }
+// dome: flat cut face sits exactly at `top`, body hangs `depth` below it
+function dome(x,top,z,r,depth,c,ry){ draw(HEMI,M.compose(x,top,z,ry||0,r*2,depth*2,r*2,0),c); }
 function emit(on){ gl.uniform1f(loc.uEmit,on?1:0); }
 function alpha(a){ gl.uniform1f(loc.uAlpha,a); }
 function fogAmt(a){ gl.uniform1f(loc.uFogAmt,a); }
@@ -564,54 +574,52 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   if(ch.kind==='parrot') S(0,hy,0, 0.40, ch.skin, 0.78);
   else B(0,hy,0, 0.70,0.66,0.66, ch.skin);
 
-  /* ---- big expressive eyes ---- */
-  const ez=0.33, ey=hy+0.05;
-  const er=ch.bigEyes?0.165:0.135;
-  const eh=blink?0.05:er*1.60;
-  S(-0.17,ey,ez, er, WHITE, eh);
-  S( 0.17,ey,ez, er, WHITE, eh);
-  if(!blink){
-    S(-0.17,ey-0.012,ez+0.055, er*0.86, ch.eye, er*1.34);  // big iris
-    S( 0.17,ey-0.012,ez+0.055, er*0.86, ch.eye, er*1.34);
-    S(-0.17,ey-0.02,ez+0.09, er*0.46, DARK, er*0.76);      // pupil
-    S( 0.17,ey-0.02,ez+0.09, er*0.46, DARK, er*0.76);
-    if(ch.sparkle){                                        // star twinkle
-      for(const sx of [-0.205,0.135]){
-        B(sx,ey+0.05,ez+0.12, 0.055,0.016,0.016, WHITE);
-        B(sx,ey+0.05,ez+0.12, 0.016,0.055,0.016, WHITE); }
-      S(-0.135,ey-0.055,ez+0.11, 0.026, WHITE, 0.04);
-      S( 0.205,ey-0.055,ez+0.11, 0.026, WHITE, 0.04);
-    } else {
-      S(-0.205,ey+0.05,ez+0.10, 0.032, WHITE, 0.05);
-      S( 0.135,ey+0.05,ez+0.10, 0.032, WHITE, 0.05);
+  /* ---- face: printed flat onto the head, Roblox/Lego style ---- */
+  const ez=0.335, ey=hy+0.05;
+  // D() stamps a flat decal on the face; layers step forward so they never z-fight
+  const D=(lx,ly,w2,h2,c,layer,rz)=>B(lx,ly,ez+0.004*(layer||0), w2,h2,0.02, c, rz);
+  const ew=ch.bigEyes?0.21:0.17, ehh=ch.bigEyes?0.25:0.20;
+  if(blink){
+    D(-0.17,ey,ew,0.045,DARK,1); D(0.17,ey,ew,0.045,DARK,1);
+  } else {
+    for(const sx of [-1,1]){
+      D(sx*0.17, ey,          ew,       ehh,       WHITE, 1);              // sclera
+      D(sx*0.17, ey-0.008,    ew*0.90,  ehh*0.90,  ch.eye, 2);             // iris
+      D(sx*0.17, ey-0.02,     ew*0.52,  ehh*0.55,  DARK,   3);             // pupil
+      if(ch.sparkle){                                                       // star twinkle
+        D(sx*0.17-ew*0.24, ey+ehh*0.22, ew*0.34, 0.022, WHITE, 4);
+        D(sx*0.17-ew*0.24, ey+ehh*0.22, 0.022,  ehh*0.30, WHITE, 4);
+        D(sx*0.17+ew*0.26, ey-ehh*0.24, ew*0.16, ehh*0.16, WHITE, 4);
+      } else {
+        D(sx*0.17-ew*0.22, ey+ehh*0.20, ew*0.24, ehh*0.22, WHITE, 4);
+      }
     }
   }
-  if(ch.lashes){
-    B(-0.17,ey+er*0.95,ez+0.05, er*2.1,0.04,0.06, DARK, -0.12);
-    B( 0.17,ey+er*0.95,ez+0.05, er*2.1,0.04,0.06, DARK,  0.12);
-    B(-0.17-er*0.9,ey+er*0.75,ez+0.05, 0.10,0.035,0.05, DARK, 0.55);
-    B( 0.17+er*0.9,ey+er*0.75,ez+0.05, 0.10,0.035,0.05, DARK,-0.55);
-  }
-  const browY=ey+0.22+(airborne?0.04:0);
-  B(-0.17,browY,ez+0.02, 0.19,0.045,0.05, ch.brow||mixc(ch.hair,[0,0,0],0.15), airborne?-0.28:-0.12);
-  B( 0.17,browY,ez+0.02, 0.19,0.045,0.05, ch.brow||mixc(ch.hair,[0,0,0],0.15), airborne? 0.28: 0.12);
+  if(ch.lashes){ for(const sx of [-1,1]){
+      D(sx*0.17, ey+ehh*0.60, ew*1.06, 0.035, DARK, 5, sx*-0.10);
+      D(sx*(0.17+ew*0.52), ey+ehh*0.42, 0.10, 0.032, DARK, 5, sx*-0.6); } }
+  const browY=ey+ehh*1.10+(airborne?0.05:0);
+  D(-0.17,browY, 0.17,0.032, ch.brow||mixc(ch.hair,[0,0,0],0.15), 5, airborne?-0.30:-0.14);
+  D( 0.17,browY, 0.17,0.032, ch.brow||mixc(ch.hair,[0,0,0],0.15), 5, airborne? 0.30: 0.14);
 
-  /* ---- mouth ---- */
-  if(ch.grin){                                    // wide Cheshire smile with teeth
-    B(0,hy-0.20,ez+0.02, 0.46,0.11,0.05, C(0x5a1b2a));
-    for(let k=-2;k<=2;k++) B(k*0.085,hy-0.17,ez+0.04, 0.06,0.07,0.04, WHITE);
-    B(-0.20,hy-0.13,ez+0.03, 0.09,0.11,0.04, WHITE, 0.4);
-    B( 0.20,hy-0.13,ez+0.03, 0.09,0.11,0.04, WHITE,-0.4);
+  /* ---- mouth, also printed flat ---- */
+  const my=hy-0.20;
+  if(ch.grin){
+    D(0,my+0.02, 0.50,0.13, C(0x5a1b2a), 1);
+    for(let k=-2;k<=2;k++) D(k*0.095,my+0.05, 0.07,0.075, WHITE, 2);
+    D(-0.22,my+0.09, 0.09,0.10, WHITE, 2, 0.5); D(0.22,my+0.09, 0.09,0.10, WHITE, 2,-0.5);
   } else if(airborne){
-    S(0,hy-0.20,ez+0.02, 0.11, C(0x8c2b3a), 0.17);
-    S(0,hy-0.23,ez+0.05, 0.06, C(0xff8fa3), 0.07);
+    D(0,my, 0.17,0.19, C(0x8c2b3a), 1);
+    D(0,my-0.05, 0.10,0.07, C(0xff8fa3), 2);
   } else {
-    B(-0.09,hy-0.19,ez+0.02, 0.10,0.05,0.04, C(0x8c2b3a), 0.5);
-    B( 0.00,hy-0.22,ez+0.03, 0.12,0.05,0.04, C(0x8c2b3a));
-    B( 0.09,hy-0.19,ez+0.02, 0.10,0.05,0.04, C(0x8c2b3a),-0.5);
+    D(-0.155,my+0.075, 0.10,0.042, C(0x8c2b3a), 1, 0.85);
+    D(-0.075,my+0.015, 0.11,0.042, C(0x8c2b3a), 1, 0.38);
+    D( 0.000,my-0.005, 0.12,0.042, C(0x8c2b3a), 1);
+    D( 0.075,my+0.015, 0.11,0.042, C(0x8c2b3a), 1,-0.38);
+    D( 0.155,my+0.075, 0.10,0.042, C(0x8c2b3a), 1,-0.85);
   }
-  if(ch.blush){ S(-0.31,hy-0.11,ez-0.03, 0.085, C(0xff9db4), 0.11);
-                S( 0.31,hy-0.11,ez-0.03, 0.085, C(0xff9db4), 0.11); }
+  if(ch.blush){ D(-0.30,hy-0.11, 0.15,0.075, C(0xff9db4), 1);
+                D( 0.30,hy-0.11, 0.15,0.075, C(0xff9db4), 1); }
 
   /* ---- hair / animal features ---- */
   if(ch.kind==='human'){
@@ -651,10 +659,10 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   if(ch.kind==='cat'){
     K(-0.26,hy+0.44,0, 0.19,0.38, ch.hair); K(0.26,hy+0.44,0, 0.19,0.38, ch.hair);
     K(-0.26,hy+0.42,0.04, 0.10,0.24, C(0xffb4c8)); K(0.26,hy+0.42,0.04, 0.10,0.24, C(0xffb4c8));
-    S(0,hy-0.13,ez+0.07, 0.16, mixc(ch.skin,[1,1,1],0.35), 0.21);
-    S(0,hy-0.06,ez+0.15, 0.065, C(0xb0559a), 0.09);
-    for(let k=-1;k<=1;k+=2){ B(k*0.32,hy-0.13,ez+0.06, 0.30,0.022,0.022, WHITE, k*0.10);
-                             B(k*0.32,hy-0.20,ez+0.06, 0.28,0.022,0.022, WHITE, k*-0.10); }
+    S(0,hy-0.30,ez+0.02, 0.16, mixc(ch.skin,[1,1,1],0.35), 0.18);
+    S(0,hy-0.26,ez+0.10, 0.065, C(0xb0559a), 0.09);
+    for(let k=-1;k<=1;k+=2){ B(k*0.34,hy-0.30,ez+0.03, 0.30,0.022,0.022, WHITE, k*0.10);
+                             B(k*0.34,hy-0.37,ez+0.03, 0.28,0.022,0.022, WHITE, k*-0.10); }
     if(ch.stripes){ for(let k=0;k<3;k++) B(-0.10+k*0.10,hy+0.35,-0.06, 0.07,0.16,0.60, mixc(ch.hair,[0,0,0],0.35));
       B(0,hy+0.36,0, 0.62,0.12,0.58, mixc(ch.hair,[0,0,0],0.10)); }
     else B(0,hy+0.36,0, 0.62,0.12,0.58, mixc(ch.hair,[0,0,0],0.10));
@@ -663,14 +671,14 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   if(ch.kind==='dog'){
     B(-0.36,hy+0.16,-0.02, 0.16,0.46,0.30, ch.hair, 0.18);
     B( 0.36,hy+0.16,-0.02, 0.16,0.46,0.30, ch.hair,-0.18);
-    B(0,hy-0.14,ez+0.10, 0.34,0.24,0.26, mixc(ch.skin,[1,1,1],0.30));
-    S(0,hy-0.06,ez+0.24, 0.085, C(0x2a2020), 0.11);
-    B(0,hy-0.27,ez+0.12, 0.12,0.06,0.14, C(0xff8fa3));
+    B(0,hy-0.32,ez+0.04, 0.34,0.22,0.22, mixc(ch.skin,[1,1,1],0.30));
+    S(0,hy-0.26,ez+0.16, 0.085, C(0x2a2020), 0.11);
+    B(0,hy-0.44,ez+0.10, 0.12,0.06,0.14, C(0xff8fa3));
     B(0,hy+0.36,0, 0.64,0.12,0.60, ch.hair);
     for(let k=0;k<3;k++) S(0,-0.45+k*0.10,-0.40-k*0.18, 0.12, ch.hair, 0.20);
   }
   if(ch.kind==='parrot'){
-    K(0,hy-0.04,ez+0.16, 0.13,0.30, C(0xffa726), 0, 1.57);
+    K(0,hy-0.26,ez+0.12, 0.13,0.30, C(0xffa726), 0, 1.57);
     for(let k=0;k<3;k++) K((k-1)*0.13, hy+0.44, -0.02, 0.09,0.34, k===1?C(0xff4d4d):ch.hair, (k-1)*0.3);
     B(-0.50,-0.10,-0.02, 0.12,0.70,0.42, C(0x2f9ad4), 0.15);
     B( 0.50,-0.10,-0.02, 0.12,0.70,0.42, C(0x2f9ad4),-0.15);
@@ -712,35 +720,42 @@ const FRUIT={
   banana:    { skin:C(0xffe04a), flesh:C(0xfff8cc), dot:C(0x9c7a1e) },
 };
 
-/* a whole fruit with its top cut flat: the sphere is sized and sunk so that its
-   cross-section exactly at the standing plane has radius r */
+/* A halved fruit: the dome hangs BELOW the cut plane so nothing ever pokes up
+   through the surface the player stands on (that was burying the character). */
 function fruitBody(s,f,r,top){
-  const R=r*1.18, d=Math.sqrt(Math.max(0.02,R*R-r*r)), cy=top-d;
-  sph(s.x,cy,s.z, R, f.skin, R*2);
-  if(f.taper){ cone(s.x, cy-R*0.72, s.z, R*0.92, R*1.5, f.skin, s.ang||0, 3.1416); }
-  return {R,cy};
+  const depth=r*(f.deep||0.92);
+  dome(s.x, top, s.z, r, depth, f.skin, s.ang||0);
+  if(f.taper) cone(s.x, top-depth*1.05, s.z, r*0.80, depth*1.1, f.skin, s.ang||0, 3.1416);
+  return {depth};
 }
 function cutFace(s,f,r,top){
-  cyl(s.x, top-0.03, s.z, r*0.995, 0.10, f.cut);          // the sliced surface
-  cyl(s.x, top-0.06, s.z, r, 0.06, mixc(f.skin,[1,1,1],0.10)); // skin edge
+  cyl(s.x, top-0.05, s.z, r, 0.10, mixc(f.skin,[1,1,1],0.08)); // skin rim
+  cyl(s.x, top-0.01, s.z, r*0.93, 0.08, f.cut);                // the sliced flesh
 }
 function drawWhole(s,f,r,top,t){
   const a0=s.ang||0;
-  const {R,cy}=fruitBody(s,f,r,top);
+  const {depth}=fruitBody(s,f,r,top);
   cutFace(s,f,r,top);
-  if(f.core) cyl(s.x, top+0.03, s.z, r*0.22, 0.06, f.core);       // pit / pale core
-  if(f.seedsOut){ for(let i=0;i<22;i++){ const a=a0+i*2.399, yy=cy-R*0.25-((i%5)*R*0.18);
-      const rr=Math.sqrt(Math.max(0,R*R-(yy-cy)*(yy-cy)))*0.99;
-      sph(s.x+Math.cos(a)*rr, yy, s.z+Math.sin(a)*rr, R*0.045, C(0xffe9a8)); } }
+  // pale flesh streaks radiating from the pit, so the cut reads as fruit
+  for(let k=0;k<12;k++) box(s.x, top+0.03, s.z, r*1.35, 0.03, r*0.045, mixc(f.cut,[1,1,1],0.35), a0+k/12*3.1416);
+  if(f.core){ cyl(s.x, top+0.05, s.z, r*0.24, 0.07, f.core);
+              cyl(s.x, top+0.07, s.z, r*0.13, 0.05, mixc(f.core,[0,0,0],0.25)); }
+  if(f.seedsOut){ for(let i=0;i<20;i++){ const a=a0+i*2.399, u=0.25+((i%5)*0.16);
+      const yy=top-depth*u, rr=r*Math.sqrt(Math.max(0.02,1-u*u))*0.99;
+      sph(s.x+Math.cos(a)*rr, yy, s.z+Math.sin(a)*rr, r*0.045, C(0xffe9a8)); } }
   if(f.crown){ for(let k=0;k<6;k++){ const a=a0+k/6*6.2832;
       box(s.x+Math.cos(a)*r*0.30, top+0.05, s.z+Math.sin(a)*r*0.30, r*0.26,0.05,0.09, mixc(f.skin,[0,0,0],0.25), a); } }
   if(f.calyx){ for(let k=0;k<7;k++){ const a=a0+k/7*6.2832;
       box(s.x+Math.cos(a)*r*0.80, top+0.10, s.z+Math.sin(a)*r*0.80, r*0.52,0.10,r*0.26, C(0x4f9a3a), a, 0.30); } }
-  if(f.stem){ const sx=s.x+Math.cos(a0)*r*0.45, sz=s.z+Math.sin(a0)*r*0.45;
-    for(let k=0;k<5;k++) cyl(sx+k*0.06, top+0.25+k*0.30, sz, 0.075, 0.36, C(0x6d8a3a), 0, 0.10*k);
-    // a second cherry hanging off the stem, so it reads as a cherry pair
-    sph(sx+0.62, top+1.05, sz, r*0.30, f.skin, r*0.60);
-    cyl(sx+0.42, top+1.42, sz, 0.06, 0.5, C(0x6d8a3a), 0, 0.5); }
+  if(f.stem){ // stem rises from the rim and curls over, with a whole cherry hanging off it
+    const sx=s.x-r*0.62, sz=s.z-r*0.10;
+    for(let k=0;k<6;k++) cyl(sx+k*0.13, top+0.30+k*0.32, sz, 0.08, 0.40, C(0x5f8a34), 0, 0.16*k);
+    // a small whole cherry dangling from the stem (kept small so it never
+    // reads as another platform you could land on)
+    const hx=sx+1.15, hy2=top+2.15, cr=r*0.20;
+    cyl(hx-0.12, hy2+0.42, sz, 0.07, 0.75, C(0x5f8a34), 0, 0.34);
+    sph(hx, hy2, sz, cr, f.skin, cr*1.9);
+    sph(hx-cr*0.35, hy2+cr*0.35, sz+cr*0.5, cr*0.28, mixc(f.skin,[1,1,1],0.4), cr*0.5); }
   if(f.leaf){ const w=Math.sin(t*2+s.z)*0.10;
     box(s.x-r*0.55, top+0.32, s.z+r*0.18, 0.86,0.10,0.40, C(0x4f9a3a), a0+0.6, 0.28+w);
     box(s.x+r*0.55, top+0.32, s.z-r*0.18, 0.86,0.10,0.40, C(0x67b04a), a0-0.6, -0.28-w); }
@@ -766,16 +781,14 @@ function drawSlice(s,f,r,top,t){
 }
 /* raspberry: a real berry built from packed drupelets, top cut flat */
 function drawCluster(s,f,r,top,t){
-  const R=r*1.18, d=Math.sqrt(Math.max(0.02,R*R-r*r)), cy=top-d;
-  sph(s.x,cy,s.z, R*0.96, f.skin, R*1.9);
-  for(let ring=0; ring<4; ring++){
-    const ry=top-0.10-ring*(R*0.42), k=Math.max(0.15,1-Math.pow((ry-cy)/R,2));
-    const rr=Math.sqrt(k)*R*0.98, n=Math.max(5,Math.round(10*Math.sqrt(k)));
+  const depth=r*0.92;
+  dome(s.x, top, s.z, r, depth, f.skin, s.ang||0);
+  for(let ring=0; ring<4; ring++){                    // drupelets, all below the cut
+    const u=0.14+ring*0.24, ry=top-depth*u;
+    const rr=r*Math.sqrt(Math.max(0.04,1-u*u))*0.97, n=Math.max(5,Math.round(11*Math.sqrt(Math.max(0.05,1-u*u))));
     for(let i=0;i<n;i++){ const a=i/n*6.2832+ring*0.5+(s.ang||0);
-      sph(s.x+Math.cos(a)*rr, ry, s.z+Math.sin(a)*rr, R*0.17, ring%2?f.bump:f.skin, R*0.30); } }
-  cyl(s.x, top-0.03, s.z, r*0.99, 0.10, f.cut);
-  for(let i=0;i<9;i++){ const a=(s.ang||0)+i/9*6.2832;
-    sph(s.x+Math.cos(a)*r*0.86, top+0.02, s.z+Math.sin(a)*r*0.86, r*0.15, f.bump, r*0.16); }
+      sph(s.x+Math.cos(a)*rr, ry, s.z+Math.sin(a)*rr, r*0.15, ring%2?f.bump:f.skin, r*0.26); } }
+  cyl(s.x, top-0.01, s.z, r*0.93, 0.08, f.cut);
 }
 function drawFruitTop(s,t){
   const f=FRUIT[s.fruit]||FRUIT.cherry, r=s.r, top=s.y+s.h/2;
@@ -821,8 +834,8 @@ function drawEnv(t,T){
   box(0,-1.0,40, 460,0.5,460, mixc(T.sea,[1,1,1],0.10));
   fogAmt(0.9);
   // foam lapping around the boat (flat discs, largest first)
-  for(let i=0;i<3;i++){ const rr=8.6-i*1.5+Math.sin(t*1.1+i)*0.35;
-    cyl(0,-0.70+i*0.04, 0, rr, 0.10, mixc(T.sea,[1,1,1],0.20+i*0.13)); }
+  for(let i=0;i<3;i++){ const rr=12.5-i*2.0+Math.sin(t*1.1+i)*0.35;
+    cyl(0,-0.60+i*0.05, 0, rr, 0.10, mixc(T.sea,[1,1,1],0.20+i*0.13)); }
   // --- sun ---
   emit(true); fogAmt(0);
   sph(-46, 34, 118, 6.2, C(0xfff3c0));
@@ -846,42 +859,39 @@ function drawEnv(t,T){
     box(bx+0.42,b.y+flap*0.22,bz, 0.62,0.09,0.24, col, -a, -0.5-flap); }
 }
 function drawBoat(s,t){
-  const rock=Math.sin(t*0.8)*0.022;
-  const x=s.x, y=s.y, z=s.z, w=s.w, d=s.d, h=s.h;
+  const rock=Math.sin(t*0.8)*0.020;
+  const x=s.x, y=s.y, z=s.z, L=s.w, Bm=s.d, h=s.h;   // L runs along X, Bm across Z
   const HULL=C(0xf2f5f8), NAVY=C(0x1f3a63), TEAK=C(0xc98b52), GLASS=C(0x2e4d6b), TRIM=C(0xd8dee6);
-  const bow=z+d*0.5;
-  // hull: white topsides, navy boot stripe, teak deck
-  box(x,y,z, w,h,d, HULL, 0, rock);
-  box(x,y-h*0.34,z, w*1.01,h*0.26,d*1.005, NAVY, 0, rock);
-  box(x,y-h*0.52,z, w*0.96,h*0.20,d*0.98, C(0x16233a), 0, rock);
-  box(x,y+h*0.50,z, w*0.95,0.16,d*0.96, TEAK, 0, rock);       // deck
-  box(x,y+h*0.46,z, w*1.005,0.30,d*0.99, TRIM, 0, rock);      // gunwale
-  // raked bow, built from tapering slabs (a cone here points along the wrong axis)
+  const bow=x+L*0.5, stern=x-L*0.5;
+  box(x,y,z, L,h,Bm, HULL, 0, rock);
+  box(x,y-h*0.34,z, L*1.005,h*0.26,Bm*1.01, NAVY, 0, rock);
+  box(x,y-h*0.54,z, L*0.98,h*0.18,Bm*0.96, C(0x16233a), 0, rock);
+  box(x,y+h*0.50,z, L*0.96,0.16,Bm*0.94, TEAK, 0, rock);
+  box(x,y+h*0.46,z, L*0.99,0.30,Bm*1.005, TRIM, 0, rock);
+  // raked bow at +X
   for(let k=0;k<5;k++){ const u=(k+1)/5;
-    box(x, y+h*(0.10+0.06*k), bow+u*w*0.16, w*(0.86-0.16*k), h*(0.80-0.10*k), w*0.36, HULL, 0, rock); }
-  box(x, y+h*0.50, bow-0.2, w*0.60,0.16,1.8, TEAK, 0, rock);
-  // superstructure kept at the STERN so the view forward stays clear
-  const sz0=z-d*0.26;
-  box(x, y+h*0.50+0.85, sz0, w*0.80,1.7,d*0.34, HULL, 0, rock);
-  for(let k=-2;k<=2;k++) box(x+k*w*0.15, y+h*0.50+1.05, sz0+d*0.17, w*0.11,0.62,0.10, GLASS, 0, rock);
-  box(x-w*0.41, y+h*0.50+1.05, sz0, 0.10,0.62,d*0.30, GLASS, 0, rock);
-  box(x+w*0.41, y+h*0.50+1.05, sz0, 0.10,0.62,d*0.30, GLASS, 0, rock);
-  // flybridge + mast + radar, all well behind the player
-  box(x, y+h*0.50+1.95, sz0-d*0.02, w*0.62,0.36,d*0.26, TRIM, 0, rock);
-  for(const sx of [-1,1]) for(const dz2 of [-1,1])
-    cyl(x+sx*w*0.28, y+h*0.50+2.30, sz0+dz2*d*0.10, 0.05,0.62, TRIM, 0, rock);
-  box(x, y+h*0.50+2.62, sz0, w*0.58,0.10,d*0.24, HULL, 0, rock);
-  cyl(x, y+h*0.50+3.30, sz0-d*0.06, 0.08, 1.4, TRIM, 0, rock);
-  box(x, y+h*0.50+4.00, sz0-d*0.06, 1.1,0.10,0.28, TRIM, t*1.6, rock);
-  box(x+0.55, y+h*0.50+3.55, sz0-d*0.06, 0.9,0.44,0.05, C(0xff6b81), 0, rock);
-  // bow rails so the foredeck reads as somewhere you stand
-  for(let k=0;k<7;k++){ const zz=z+d*0.10+k*d*0.055;
-    for(const sx of [-1,1]) cyl(x+sx*w*0.46, y+h*0.50+0.42, zz, 0.045,0.85, TRIM, 0, rock); }
-  for(const sx of [-1,1]) box(x+sx*w*0.46, y+h*0.50+0.84, z+d*0.26, 0.06,0.06,d*0.36, TRIM, 0, rock);
-  // deck details
-  tor(x-w*0.40, y+h*0.50+0.55, z-d*0.06, 0.55, C(0xff4d4d), 0, 1.5708);
-  box(x+w*0.22, y+h*0.50+0.35, z+d*0.06, 1.5,0.30,0.9, TRIM, 0.3, rock);
-  for(const sx of [-1,1]) box(x+sx*w*0.22, y+h*0.50+0.42, z-d*0.06, 0.7,0.5,1.6, C(0xfff0d0), 0, rock);
+    box(bow-L*0.02+u*Bm*0.30, y+h*(0.10+0.06*k), z, Bm*0.34, h*(0.80-0.10*k), Bm*(0.86-0.16*k), HULL, 0, rock); }
+  // superstructure toward the stern, and pushed to the far (-Z) side so the
+  // near deck the player starts on stays completely clear
+  const sx0=x-L*0.20, sz0=z-Bm*0.24;
+  box(sx0, y+h*0.50+0.85, sz0, L*0.40,1.7,Bm*0.42, HULL, 0, rock);
+  for(let k=-2;k<=2;k++) box(sx0+k*L*0.075, y+h*0.50+1.05, sz0+Bm*0.21, L*0.055,0.62,0.10, GLASS, 0, rock);
+  box(sx0-L*0.20, y+h*0.50+1.05, sz0, 0.10,0.62,Bm*0.36, GLASS, 0, rock);
+  box(sx0, y+h*0.50+1.95, sz0, L*0.32,0.36,Bm*0.34, TRIM, 0, rock);
+  for(const dx2 of [-1,1]) for(const dz2 of [-1,1])
+    cyl(sx0+dx2*L*0.14, y+h*0.50+2.30, sz0+dz2*Bm*0.13, 0.05,0.62, TRIM, 0, rock);
+  box(sx0, y+h*0.50+2.62, sz0, L*0.30,0.10,Bm*0.32, HULL, 0, rock);
+  cyl(sx0-L*0.03, y+h*0.50+3.30, sz0, 0.08, 1.4, TRIM, 0, rock);
+  box(sx0-L*0.03, y+h*0.50+4.00, sz0, 1.1,0.10,0.28, TRIM, t*1.6, rock);
+  box(sx0+0.55, y+h*0.50+3.55, sz0, 0.9,0.44,0.05, C(0xff6b81), 0, rock);
+  // rail along the far side and the stern only — the near side is left open to jump from
+  for(let k=0;k<11;k++) cyl(stern+L*0.06+k*L*0.088, y+h*0.50+0.42, z-Bm*0.46, 0.045,0.85, TRIM, 0, rock);
+  box(x, y+h*0.50+0.84, z-Bm*0.46, L*0.92,0.06,0.06, TRIM, 0, rock);
+  for(let k=0;k<4;k++) cyl(stern+L*0.03, y+h*0.50+0.42, z-Bm*0.30+k*Bm*0.20, 0.045,0.85, TRIM, 0, rock);
+  // deck details, all kept away from the launch side
+  tor(stern+L*0.10, y+h*0.50+0.55, z-Bm*0.30, 0.55, C(0xff4d4d), 0, 1.5708);
+  box(bow-L*0.16, y+h*0.50+0.35, z-Bm*0.18, 1.5,0.30,0.9, TRIM, 0.3, rock);
+  for(const dx2 of [-1,1]) box(x+dx2*L*0.10, y+h*0.50+0.42, z-Bm*0.34, 1.6,0.5,0.7, C(0xfff0d0), 0, rock);
 }
 
 /* =========================================================================
@@ -896,11 +906,11 @@ function buildLevel(idx){
   let cx=0, cy=0, cz=0;
 
   // ---- the boat you set sail from ----
-  const boat={type:'box',boat:true,x:0,y:0,z:0,w:11,h:2.0,d:17,c:C(0xf2f5f8),bx:0,by:0,bz:0};
+  // the yacht lies sideways across the route, so you launch off its long open side
+  const boat={type:'box',boat:true,x:0,y:0,z:0,w:19,h:2.0,d:10,c:C(0xf2f5f8),bx:0,by:0,bz:0};
   solids.push(boat);
-  // start on the foredeck, facing the towers, with the superstructure behind
-  const spawn={x:0,y:boat.y+boat.h/2+1.0,z:5.4};
-  checks.push({x:0,y:boat.y+boat.h/2+0.4,z:5.4});
+  const spawn={x:2.6,y:boat.y+boat.h/2+1.0,z:2.9};
+  checks.push({x:2.6,y:boat.y+boat.h/2+0.4,z:2.9});
 
   function disc(dx,dz,dy,r,extra){
     cx+=dx; cz+=dz; cy+=dy;
@@ -931,18 +941,19 @@ function buildLevel(idx){
 
   if(idx===0){
     /* CHERRY — gentle: big fruit steps, a mover, a spinner, fat spikes, banana run */
-    let s=disc(0, 14.6, 1.4, 3.2); coinsOn(s,3);
+    let s=disc(0, 11.6, 1.4, 3.2); coinsOn(s,3);
     s=disc(2.2, 8.5, 1.5, 3.0);   coinsOn(s,3);
     s=disc(-2.4, 8.5, 1.5, 3.0);  coinsOn(s,3); chk(s);
     s=disc(-0.5, 9.0, 1.5, 2.9, {axis:'x',amp:2.6,mspd:0.8,ph:0}); coinsOn(s,2);
     s=disc(0.5, 9.0, 1.5, 3.2);   coinsOn(s,3);
-    // fat spikes on a wide slice — walk around them
-    s=disc(0, 9.0, 1.4, 3.8);     chk(s);
+    // fat spikes on a wide slice — walk around them (no checkpoint on a hazard platform)
+    s=disc(0, 9.0, 1.4, 3.8);
     spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+1.1,w:3.4,d:1.7,r:1.25});
     coins.push({x:s.x-2.1,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:1});
     coins.push({x:s.x+2.1,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:2});
     // spinning fruit ride
     s=disc(0, 9.2, 1.5, 3.4, {spin:0.55}); coinsOn(s,3);
+    s=disc(0, 8.6, 1.4, 3.4); coinsOn(s,3); chk(s);
     // banana run that falls away
     const b=bananaBridge(0, 8.0, 1.4, 6, 3.0);
     cz=b.z;
@@ -954,7 +965,7 @@ function buildLevel(idx){
 
   if(idx===1){
     /* STRAWBERRY — trampoline over a wall, fan lift, spinner, mover, spikes */
-    let s=disc(0, 14.4, 1.4, 3.2); coinsOn(s,3);
+    let s=disc(0, 11.5, 1.4, 3.2); coinsOn(s,3);
     s=disc(1.8, 8.6, 1.2, 3.0);   coinsOn(s,3);
     // trampoline (its own landing surface) then a wall to clear
     const tr=disc(-1.8, 8.8, 0.6, 3.0, {tramp:true}); tr.fruit='watermelon';
@@ -970,19 +981,19 @@ function buildLevel(idx){
     s=disc(0, 8.4, 4.6, 3.2);     coinsOn(s,3); chk(s);
     s=disc(-1.6, 8.8, 1.4, 3.2, {spin:0.8}); coinsOn(s,3);
     s=disc(1.0, 8.8, 1.5, 3.0, {axis:'y',amp:1.5,mspd:1.1,ph:0}); coinsOn(s,2);
-    s=disc(0, 8.8, 1.5, 3.9);     chk(s);
+    s=disc(0, 8.8, 1.5, 3.9);
     spikes.push({x:s.x-1.9,y:s.y+s.h/2+0.9,z:s.z,w:1.7,d:3.0,r:1.20});
     spikes.push({x:s.x+1.9,y:s.y+s.h/2+0.9,z:s.z,w:1.7,d:3.0,r:1.20});
     coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:3});
     const b=bananaBridge(0, 8.0, 1.4, 5, 3.0); cz=b.z;
-    s=disc(0, 8.0, 1.4, 3.2); coinsOn(s,3);
+    s=disc(0, 8.0, 1.4, 3.2); coinsOn(s,3); chk(s);
     const g=disc(0, 8.6, 1.5, 4.2);
     goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.2};
   }
 
   if(idx===2){
     /* BLUEBERRY — balloon swing, down-fan, spinner, mover, long banana finish */
-    let s=disc(0, 14.4, 1.4, 3.2); coinsOn(s,3);
+    let s=disc(0, 11.5, 1.4, 3.2); coinsOn(s,3);
     s=disc(-2.0, 8.6, 1.4, 3.0);  coinsOn(s,3); chk(s);
     // balloon swing across a big gap
     s=disc(2.0, 8.6, 1.2, 3.0);   coinsOn(s,2);
@@ -999,12 +1010,12 @@ function buildLevel(idx){
     coins.push({x:s.x+2.2,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:2});
     s=disc(-1.6, 8.8, 1.4, 3.2, {spin:1.0}); coinsOn(s,3);
     s=disc(1.2, 8.8, 1.5, 3.0, {axis:'y',amp:1.7,mspd:1.2,ph:0}); coinsOn(s,2);
-    s=disc(0, 8.8, 1.5, 4.0);     chk(s);
+    s=disc(0, 8.8, 1.5, 4.0);
     spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+1.2,w:3.6,d:1.7,r:1.30});
     coins.push({x:s.x-2.2,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:4});
     coins.push({x:s.x+2.2,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:5});
     const b=bananaBridge(0, 8.0, 1.4, 7, 3.0); cz=b.z;
-    s=disc(0, 8.2, 1.4, 3.2); coinsOn(s,3);
+    s=disc(0, 8.2, 1.4, 3.2); coinsOn(s,3); chk(s);
     const g=disc(0, 8.6, 1.5, 4.4);
     goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.4};
   }
@@ -1492,7 +1503,6 @@ function fillLeaderboard(){ const s=loadScores(), el=document.getElementById('lb
   el.innerHTML=s.map((r,i)=>`<div class="lbrow ${i===0?'best':''}"><span>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</span><span class="who">${r.name}</span><span>${fmtTime(r.time)}</span></div>`).join(''); }
 function updateCharUI(){ const c=CHARACTERS[chosen];
   document.getElementById('charName').textContent=c.name;
-  document.getElementById('charDesc').textContent=c.desc;
   const dots=document.getElementById('charDots'); dots.innerHTML='';
   for(let i=0;i<CHARACTERS.length;i++){ const d=document.createElement('div'); d.className='dot'+(i===chosen?' on':''); dots.appendChild(d); } }
 
