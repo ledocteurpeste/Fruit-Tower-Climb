@@ -602,14 +602,15 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   const my=hy-0.20;
   const animalFace=(ch.kind==='cat'||ch.kind==='dog');   // those wear it on the muzzle
   if(!animalFace){
-    if(airborne){
-      D(0,my, 0.17,0.19, C(0x8c2b3a), 1);
-      D(0,my-0.05, 0.10,0.07, C(0xff8fa3), 2);
-    } else {
-      D(-0.085,my+0.048, 0.10,0.042, C(0x8c2b3a), 1, 0.62);
-      D( 0.000,my,       0.12,0.042, C(0x8c2b3a), 1);
-      D( 0.085,my+0.048, 0.10,0.042, C(0x8c2b3a), 1,-0.62);
-    }
+    // a big open happy smile: a U of stacked bars, teeth along the top, tongue below
+    const MO=C(0x7d1f2e), TON=C(0xff8fa3), grow=airborne?1.18:1.0;
+    D( 0.000, my-0.005, 0.080, 0.175*grow, MO, 1);
+    D(-0.078, my+0.014, 0.080, 0.145*grow, MO, 1);
+    D( 0.078, my+0.014, 0.080, 0.145*grow, MO, 1);
+    D(-0.144, my+0.046, 0.062, 0.092*grow, MO, 1);
+    D( 0.144, my+0.046, 0.062, 0.092*grow, MO, 1);
+    D( 0.000, my+0.072*grow, 0.205, 0.038, WHITE, 2);          // teeth
+    D( 0.000, my-0.062*grow, 0.130, 0.055, TON,   2);          // tongue
   }
   if(ch.blush){ D(-0.30,hy-0.11, 0.15,0.075, C(0xff9db4), 1);
                 D( 0.30,hy-0.11, 0.15,0.075, C(0xff9db4), 1); }
@@ -707,9 +708,9 @@ const THEMES=[
    flat (that cut face is exactly the surface you stand on); "slice" fruits
    are proper cross-section slices with rind, pith, flesh and seeds. */
 const FRUIT={
-  cherry:    { style:'whole', skin:C(0xd6183f), cut:C(0xff96a6), core:C(0x8a5a2b), stem:true, leaf:true },
+  cherry:    { style:'whole', skin:C(0xd6183f), cut:C(0xff96a6), core:C(0x8a5a2b) },
   strawberry:{ style:'whole', skin:C(0xf03047), cut:C(0xffdfe4), core:C(0xfff2f4), taper:true, seedsOut:true, calyx:true },
-  blueberry: { style:'whole', skin:C(0x4f61d8), cut:C(0xa8b2ff), core:C(0x8f9bf0), crown:true, leaf:true },
+  blueberry: { style:'whole', skin:C(0x4f61d8), cut:C(0xa8b2ff), core:C(0x8f9bf0), crown:true },
   raspberry: { style:'cluster', skin:C(0xe0335f), cut:C(0xffb6c8), bump:C(0xf4557d) },
   watermelon:{ style:'slice', rind:C(0x2f8b3f), pith:C(0xe9f7cf), flesh:C(0xff5d6e), seeds:C(0x2b2b2b) },
   orange:    { style:'slice', rind:C(0xff8c1a), pith:C(0xffe3bb), flesh:C(0xffab3d), wedges:9 },
@@ -745,18 +746,6 @@ function drawWhole(s,f,r,top,t){
       box(s.x+Math.cos(a)*r*0.30, top+0.05, s.z+Math.sin(a)*r*0.30, r*0.26,0.05,0.09, mixc(f.skin,[0,0,0],0.25), a); } }
   if(f.calyx){ for(let k=0;k<7;k++){ const a=a0+k/7*6.2832;
       box(s.x+Math.cos(a)*r*0.80, top+0.10, s.z+Math.sin(a)*r*0.80, r*0.52,0.10,r*0.26, C(0x4f9a3a), a, 0.30); } }
-  if(f.stem){ // stem rises from the rim and curls over, with a whole cherry hanging off it
-    const sx=s.x-r*0.62, sz=s.z-r*0.10;
-    for(let k=0;k<6;k++) cyl(sx+k*0.13, top+0.30+k*0.32, sz, 0.08, 0.40, C(0x5f8a34), 0, 0.16*k);
-    // a small whole cherry dangling from the stem (kept small so it never
-    // reads as another platform you could land on)
-    const hx=sx+1.15, hy2=top+2.15, cr=r*0.20;
-    cyl(hx-0.12, hy2+0.42, sz, 0.07, 0.75, C(0x5f8a34), 0, 0.34);
-    sph(hx, hy2, sz, cr, f.skin, cr*1.9);
-    sph(hx-cr*0.35, hy2+cr*0.35, sz+cr*0.5, cr*0.28, mixc(f.skin,[1,1,1],0.4), cr*0.5); }
-  if(f.leaf){ const w=Math.sin(t*2+s.z)*0.10;
-    box(s.x-r*0.55, top+0.32, s.z+r*0.18, 0.86,0.10,0.40, C(0x4f9a3a), a0+0.6, 0.28+w);
-    box(s.x+r*0.55, top+0.32, s.z-r*0.18, 0.86,0.10,0.40, C(0x67b04a), a0-0.6, -0.28-w); }
 }
 /* a real cross-section slice: rind band, pith ring, flesh, wedges, seeds */
 function drawSlice(s,f,r,top,t){
@@ -881,15 +870,12 @@ function drawBoat(s,t){
   box(sx0, y+h*0.50+2.62, sz0, L*0.30,0.10,Bm*0.32, HULL, 0, rock);
   cyl(sx0-L*0.03, y+h*0.50+3.30, sz0, 0.08, 1.4, TRIM, 0, rock);
   box(sx0-L*0.03, y+h*0.50+4.00, sz0, 1.1,0.10,0.28, TRIM, t*1.6, rock);
-  box(sx0+0.55, y+h*0.50+3.55, sz0, 0.9,0.44,0.05, C(0xff6b81), 0, rock);
   // rail along the far side and the stern only — the near side is left open to jump from
   for(let k=0;k<11;k++) cyl(stern+L*0.06+k*L*0.088, y+h*0.50+0.42, z-Bm*0.46, 0.045,0.85, TRIM, 0, rock);
   box(x, y+h*0.50+0.84, z-Bm*0.46, L*0.92,0.06,0.06, TRIM, 0, rock);
   for(let k=0;k<4;k++) cyl(stern+L*0.03, y+h*0.50+0.42, z-Bm*0.30+k*Bm*0.20, 0.045,0.85, TRIM, 0, rock);
   // deck details, all kept away from the launch side
   tor(stern+L*0.10, y+h*0.50+0.55, z-Bm*0.30, 0.55, C(0xff4d4d), 0, 1.5708);
-  box(bow-L*0.16, y+h*0.50+0.35, z-Bm*0.18, 1.5,0.30,0.9, TRIM, 0.3, rock);
-  for(const dx2 of [-1,1]) box(x+dx2*L*0.10, y+h*0.50+0.42, z-Bm*0.34, 1.6,0.5,0.7, C(0xfff0d0), 0, rock);
 }
 
 /* =========================================================================
@@ -907,8 +893,16 @@ function buildLevel(idx){
   // the yacht lies sideways across the route, so you launch off its long open side
   const boat={type:'box',boat:true,x:0,y:0,z:0,w:19,h:2.0,d:10,c:C(0xf2f5f8),bx:0,by:0,bz:0};
   solids.push(boat);
+  // The hull box only covered the main deck: the bow slabs and the cabin were
+  // drawn with no collision, so you walked through the cabin and off the bow.
+  // These invisible boxes match that drawn geometry.
+  const dTop=boat.y+boat.h/2;
+  solids.push({type:'box',nodraw:true,x:10.6,y:boat.y,z:0,w:3.2,h:boat.h,d:6.6,bx:10.6,by:boat.y,bz:0});
+  solids.push({type:'box',nodraw:true,x:12.6,y:boat.y,z:0,w:1.8,h:boat.h,d:3.4,bx:12.6,by:boat.y,bz:0});
+  solids.push({type:'box',nodraw:true,x:-3.8,y:dTop+0.85,z:-2.4,w:7.6,h:1.7,d:4.2,bx:-3.8,by:dTop+0.85,bz:-2.4});
+  solids.push({type:'box',nodraw:true,x:-3.8,y:dTop+1.95,z:-2.4,w:6.1,h:0.36,d:3.4,bx:-3.8,by:dTop+1.95,bz:-2.4});
   const spawn={x:2.6,y:boat.y+boat.h/2+1.0,z:2.9};
-  checks.push({x:2.6,y:boat.y+boat.h/2+0.4,z:2.9});
+  checks.push({x:2.6,y:boat.y+boat.h/2+0.4,z:2.9,hidden:true});
 
   function disc(dx,dz,dy,r,extra){
     cx+=dx; cz+=dz; cy+=dy;
@@ -1251,6 +1245,7 @@ function render(t){
   /* ---- solids ---- */
   for(const s of world.solids){
     if(s.dead && s.y<-14) continue;
+    if(s.nodraw) continue;              // collision-only helpers (bow, cabin)
     if(s.boat){ drawBoat(s,t); continue; }
     if(s.crumb){ drawBananaSeg(s,t); continue; }
     if(s.wall){ // a wall of stacked crates to bounce over
@@ -1285,7 +1280,7 @@ function render(t){
 
   /* ---- checkpoint buoys ---- */
   for(const ck of world.checks){
-    if(ck.y<0.9) continue; // the one on the boat is implied by the boat itself
+    if(ck.hidden) continue;   // the start point needs no flag
     cyl(ck.x,ck.y+1.2,ck.z, 0.11, 2.6, C(0xcbd5e1));
     const wv=Math.sin(t*4)*0.12;
     box(ck.x+0.85,ck.y+2.15+wv,ck.z, 1.5,0.85,0.09, ck.hit?C(0x33d17a):C(0xffd34d));
