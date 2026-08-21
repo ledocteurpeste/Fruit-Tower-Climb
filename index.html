@@ -511,9 +511,6 @@ const CHARACTERS=[
   { name:'Biscuit', desc:'A very good dog', kind:'dog',
     skin:C(0xc98b52), hair:C(0x8b5a2b), shirt:C(0xffd34d), legs:C(0x9c6b2f), shoe:C(0x5a3a1a),
     eye:C(0x5a3a1a), blush:true, bigEyes:true },
-  { name:'Kiwi', desc:'A parrot with big feelings', kind:'parrot',
-    skin:C(0x35c85a), hair:C(0xffd23d), shirt:C(0xff4d4d), legs:C(0x2f9ad4), shoe:C(0xffa726),
-    eye:C(0x2a2a33), bigEyes:true, glove:C(0xffe9a8) },
 ];
 let chosen=0; try{ chosen=Math.max(0,Math.min(CHARACTERS.length-1, parseInt(localStorage.getItem('ft_char')||'0'))); }catch(e){}
 
@@ -521,7 +518,6 @@ let chosen=0; try{ chosen=Math.max(0,Math.min(CHARACTERS.length-1, parseInt(loca
 function drawGlove(B,S, lx,ly,lz, col, flip){
   S(lx,ly,lz, 0.19, col, 0.34);                                     // rounded palm
   for(let f=0;f<4;f++) S(lx+flip*0.02, ly-0.20, lz-0.105+f*0.07, 0.055, col, 0.20); // fingers
-  S(lx+flip*0.17, ly-0.03, lz+0.05, 0.065, col, 0.17);              // thumb
   S(lx,ly+0.13,lz, 0.155, col, 0.10);                               // cuff
 }
 
@@ -550,9 +546,11 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
 
   /* torso */
   B(0,-0.16+bob,0, 0.78,0.94,0.50, ch.shirt);
-  if(ch.jacket){ B(-0.34,-0.16+bob,0.02, 0.16,0.96,0.54, ch.jacket);
-                 B( 0.34,-0.16+bob,0.02, 0.16,0.96,0.54, ch.jacket);
-                 B(0,-0.60+bob,0.02, 0.80,0.14,0.54, ch.jacket); }
+  // depth 0.58 (torso is 0.50) so no jacket face is ever coplanar with the
+  // shirt -- at 0.54 the back faces coincided and flickered black/blue
+  if(ch.jacket){ B(-0.34,-0.16+bob,0, 0.16,0.96,0.58, ch.jacket);
+                 B( 0.34,-0.16+bob,0, 0.16,0.96,0.58, ch.jacket);
+                 B(0,-0.60+bob,0, 0.80,0.14,0.58, ch.jacket); }
   if(ch.fluffy){ for(let k=0;k<7;k++){ const a=k/7*6.2832;
       S(Math.cos(a)*0.40, 0.26+bob, Math.sin(a)*0.26, 0.13, mixc(ch.shirt,[1,1,1],0.25), 0.20); } }
   if(ch.skirt){ Cy(0,-0.58+bob,0, 0.56,0.30, ch.skirt);
@@ -570,8 +568,7 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   /* neck + head */
   B(0,0.40+bob,0, 0.28,0.20,0.26, ch.skin);
   const hy=0.80+bob;
-  if(ch.kind==='parrot') S(0,hy,0, 0.40, ch.skin, 0.78);
-  else B(0,hy,0, 0.70,0.66,0.66, ch.skin);
+  B(0,hy,0, 0.70,0.66,0.66, ch.skin);
 
   /* ---- face: printed flat onto the head, Roblox/Lego style ---- */
   const ez=0.335, ey=hy+0.05;
@@ -601,21 +598,18 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   D(-0.17,browY, 0.17,0.032, ch.brow||mixc(ch.hair,[0,0,0],0.15), 5, airborne?-0.30:-0.14);
   D( 0.17,browY, 0.17,0.032, ch.brow||mixc(ch.hair,[0,0,0],0.15), 5, airborne? 0.30: 0.14);
 
-  /* ---- mouth, also printed flat ---- */
+  /* ---- mouth: a simple happy smile, kept well clear of the cheeks ---- */
   const my=hy-0.20;
-  if(ch.grin){
-    D(0,my+0.02, 0.50,0.13, C(0x5a1b2a), 1);
-    for(let k=-2;k<=2;k++) D(k*0.095,my+0.05, 0.07,0.075, WHITE, 2);
-    D(-0.22,my+0.09, 0.09,0.10, WHITE, 2, 0.5); D(0.22,my+0.09, 0.09,0.10, WHITE, 2,-0.5);
-  } else if(airborne){
-    D(0,my, 0.17,0.19, C(0x8c2b3a), 1);
-    D(0,my-0.05, 0.10,0.07, C(0xff8fa3), 2);
-  } else {
-    D(-0.155,my+0.075, 0.10,0.042, C(0x8c2b3a), 1, 0.85);
-    D(-0.075,my+0.015, 0.11,0.042, C(0x8c2b3a), 1, 0.38);
-    D( 0.000,my-0.005, 0.12,0.042, C(0x8c2b3a), 1);
-    D( 0.075,my+0.015, 0.11,0.042, C(0x8c2b3a), 1,-0.38);
-    D( 0.155,my+0.075, 0.10,0.042, C(0x8c2b3a), 1,-0.85);
+  const animalFace=(ch.kind==='cat'||ch.kind==='dog');   // those wear it on the muzzle
+  if(!animalFace){
+    if(airborne){
+      D(0,my, 0.17,0.19, C(0x8c2b3a), 1);
+      D(0,my-0.05, 0.10,0.07, C(0xff8fa3), 2);
+    } else {
+      D(-0.085,my+0.048, 0.10,0.042, C(0x8c2b3a), 1, 0.62);
+      D( 0.000,my,       0.12,0.042, C(0x8c2b3a), 1);
+      D( 0.085,my+0.048, 0.10,0.042, C(0x8c2b3a), 1,-0.62);
+    }
   }
   if(ch.blush){ D(-0.30,hy-0.11, 0.15,0.075, C(0xff9db4), 1);
                 D( 0.30,hy-0.11, 0.15,0.075, C(0xff9db4), 1); }
@@ -658,10 +652,19 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   if(ch.kind==='cat'){
     K(-0.26,hy+0.44,0, 0.19,0.38, ch.hair); K(0.26,hy+0.44,0, 0.19,0.38, ch.hair);
     K(-0.26,hy+0.42,0.04, 0.10,0.24, C(0xffb4c8)); K(0.26,hy+0.42,0.04, 0.10,0.24, C(0xffb4c8));
-    S(0,hy-0.30,ez+0.02, 0.16, mixc(ch.skin,[1,1,1],0.35), 0.18);
-    S(0,hy-0.26,ez+0.10, 0.065, C(0xb0559a), 0.09);
-    for(let k=-1;k<=1;k+=2){ B(k*0.34,hy-0.30,ez+0.03, 0.30,0.022,0.022, WHITE, k*0.10);
-                             B(k*0.34,hy-0.37,ez+0.03, 0.28,0.022,0.022, WHITE, k*-0.10); }
+    // muzzle just below the eyes (it was sitting on the chin)
+    S(0,hy-0.13,ez+0.03, 0.17, mixc(ch.skin,[1,1,1],0.35), 0.20);
+    S(0,hy-0.075,ez+0.13, 0.062, C(0xb0559a), 0.085);          // nose
+    for(let k=-1;k<=1;k+=2){ B(k*0.36,hy-0.13,ez+0.05, 0.32,0.022,0.022, WHITE, k*0.10);
+                             B(k*0.36,hy-0.19,ez+0.05, 0.30,0.022,0.022, WHITE, k*-0.10); }
+    { const gz=ez+0.155;                                        // mouth on the muzzle
+      if(ch.grin){ B(0,hy-0.235,gz, 0.40,0.09,0.02, C(0x5a1b2a));
+        for(let k=-2;k<=2;k++) B(k*0.078,hy-0.205,gz+0.01, 0.052,0.055,0.02, WHITE);
+        B(-0.18,hy-0.175,gz+0.01, 0.075,0.085,0.02, WHITE, 0.5);
+        B( 0.18,hy-0.175,gz+0.01, 0.075,0.085,0.02, WHITE,-0.5); }
+      else { B(-0.065,hy-0.215,gz, 0.085,0.032,0.02, C(0x8c2b3a), 0.6);
+             B( 0.000,hy-0.235,gz, 0.095,0.032,0.02, C(0x8c2b3a));
+             B( 0.065,hy-0.215,gz, 0.085,0.032,0.02, C(0x8c2b3a),-0.6); } }
     if(ch.stripes){ for(let k=0;k<3;k++) B(-0.10+k*0.10,hy+0.35,-0.06, 0.07,0.16,0.60, mixc(ch.hair,[0,0,0],0.35));
       B(0,hy+0.36,0, 0.62,0.12,0.58, mixc(ch.hair,[0,0,0],0.10)); }
     else B(0,hy+0.36,0, 0.62,0.12,0.58, mixc(ch.hair,[0,0,0],0.10));
@@ -670,19 +673,15 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   if(ch.kind==='dog'){
     B(-0.36,hy+0.16,-0.02, 0.16,0.46,0.30, ch.hair, 0.18);
     B( 0.36,hy+0.16,-0.02, 0.16,0.46,0.30, ch.hair,-0.18);
-    B(0,hy-0.32,ez+0.04, 0.34,0.22,0.22, mixc(ch.skin,[1,1,1],0.30));
-    S(0,hy-0.26,ez+0.16, 0.085, C(0x2a2020), 0.11);
-    B(0,hy-0.44,ez+0.10, 0.12,0.06,0.14, C(0xff8fa3));
+    B(0,hy-0.15,ez+0.05, 0.34,0.22,0.24, mixc(ch.skin,[1,1,1],0.30));   // snout
+    S(0,hy-0.085,ez+0.18, 0.085, C(0x2a2020), 0.11);                     // nose
+    B(0,hy-0.30,ez+0.13, 0.12,0.06,0.14, C(0xff8fa3));                   // tongue
+    { const gz=ez+0.18;
+      B(-0.065,hy-0.225,gz, 0.085,0.032,0.02, C(0x8c2b3a), 0.6);
+      B( 0.000,hy-0.245,gz, 0.095,0.032,0.02, C(0x8c2b3a));
+      B( 0.065,hy-0.225,gz, 0.085,0.032,0.02, C(0x8c2b3a),-0.6); }
     B(0,hy+0.36,0, 0.64,0.12,0.60, ch.hair);
     for(let k=0;k<3;k++) S(0,-0.45+k*0.10,-0.40-k*0.18, 0.12, ch.hair, 0.20);
-  }
-  if(ch.kind==='parrot'){
-    K(0,hy-0.26,ez+0.12, 0.13,0.30, C(0xffa726), 0, 1.57);
-    for(let k=0;k<3;k++) K((k-1)*0.13, hy+0.44, -0.02, 0.09,0.34, k===1?C(0xff4d4d):ch.hair, (k-1)*0.3);
-    B(-0.50,-0.10,-0.02, 0.12,0.70,0.42, C(0x2f9ad4), 0.15);
-    B( 0.50,-0.10,-0.02, 0.12,0.70,0.42, C(0x2f9ad4),-0.15);
-    for(let k=-1;k<=1;k++) B(k*0.13,-0.55,-0.42, 0.12,0.50,0.10, k===0?C(0xff4d4d):C(0xffd23d), k*0.2);
-    S(0,-0.16,0.28, 0.26, C(0xffe9a8), 0.42);
   }
 }
 
@@ -1065,8 +1064,10 @@ function fmtTime(t){ const m=Math.floor(t/60), s=(t%60); return m+':'+s.toFixed(
 function updateHUD(){
   document.getElementById('coinCount').textContent=coinsLevel;
   document.getElementById('timer').textContent=fmtTime(runTime);
-  document.getElementById('lives').textContent = opts.cheat ? '∞❤'
-    : (lives>3 ? '❤×'+lives : '❤'.repeat(Math.max(0,lives))+'🖤'.repeat(Math.max(0,3-lives)));
+  // ❤ alone falls back to a monochrome glyph; ️ forces the red emoji
+  const FULL='❤️', EMPTY='🤍';
+  document.getElementById('lives').textContent = opts.cheat ? '∞'+FULL
+    : (lives>3 ? FULL+'×'+lives : FULL.repeat(Math.max(0,lives))+EMPTY.repeat(Math.max(0,3-lives)));
 }
 let msgTimer=null;
 function showMsg(t,ms){ const e=document.getElementById('centerMsg'); e.textContent=t; e.style.opacity='1';
