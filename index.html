@@ -113,14 +113,20 @@
     font-size:28px; color:#fff; background:rgba(255,255,255,.18); box-shadow:0 4px 0 rgba(0,0,0,.35); }
   .arrow:active{ transform:translateY(3px); }
 
-  /* costume arrows sit in a column beside the climber; the accessory drawer
-     slides over the whole screen so the grid can be finger-sized */
-  #cosCol{ position:absolute; right:16px; top:50%; transform:translateY(-50%);
-    display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:auto; }
+  /* The costume arrows used to be absolutely positioned and landed on top of
+     the next-character arrow, which swallowed the taps. They now sit in a row
+     beside it so the two can never overlap. */
+  #rightCol{ display:flex; align-items:center; gap:12px; pointer-events:auto; }
+  #cosCol{ display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:auto; }
   #cosName{ font-size:clamp(12px,3vw,16px); font-weight:800; opacity:.9; margin-bottom:6px; }
   #charRow{ display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; }
-  #accDrawer{ position:fixed; inset:0; z-index:70; background:rgba(4,14,26,.94);
-    display:flex; flex-direction:column; padding:14px; }
+  #accDrawer{ position:fixed; inset:0; z-index:70; background:rgba(4,14,26,.96);
+    display:flex; flex-direction:column; padding:14px; color:#fff; }
+  #accDrawer h2{ color:#fff; }
+  #accDrawer .tag{ color:rgba(255,255,255,.82); }
+  #accDrawer #accClose{ align-self:center; max-width:260px; min-width:200px; }
+  #accEmpty{ grid-column:1/-1; text-align:center; padding:26px 10px;
+    font-size:clamp(15px,3.8vw,20px); font-weight:800; color:#ffe07a; line-height:1.5; }
   #accGrid{ flex:1; overflow-y:auto; display:grid; gap:10px; padding:4px 2px 10px;
     grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); align-content:start; }
   .accCard{ cursor:pointer; border:none; border-radius:14px; padding:10px 6px; color:#fff;
@@ -129,6 +135,14 @@
   .accCard .tag{ display:block; font-size:10px; opacity:.65; font-weight:700; margin-top:3px; }
   .accCard.on{ background:#4dc3ff; color:#062033; }
   #profWho{ font-size:clamp(13px,3.2vw,17px); font-weight:800; opacity:.9; margin:2px 0 10px; }
+  #profInput{ pointer-events:auto; -webkit-user-select:text; user-select:text; touch-action:auto;
+    font:inherit; font-size:clamp(17px,4vw,21px); font-weight:800; padding:13px 16px;
+    border-radius:14px; border:2px solid rgba(255,255,255,.35); background:rgba(255,255,255,.92);
+    color:#3a1020; width:min(300px,60vw); text-align:center; }
+  #profInput:focus{ outline:none; border-color:#ffd34d; box-shadow:0 0 0 4px rgba(255,211,77,.35); }
+  #profPick{ pointer-events:auto; font:inherit; font-size:clamp(15px,3.6vw,19px); font-weight:800;
+    padding:12px 14px; border-radius:14px; border:2px solid rgba(255,255,255,.35);
+    background:rgba(255,255,255,.92); color:#3a1020; width:min(320px,72vw); }
   #unlockNote{ font-size:clamp(14px,3.6vw,20px); font-weight:800; margin:6px 0 10px; color:#ffe07a; }
   .dots{ display:flex; gap:7px; justify-content:center; margin-bottom:8px; }
   .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.3); }
@@ -206,7 +220,7 @@
   <button class="btn" id="beginBtn">▶ Begin Game</button>
   <button class="btn alt" id="optionsBtn">⚙ Options</button>
   <button class="btn ghost" id="leaderBtn">🏆 Leaderboard</button>
-  <button class="btn ghost" id="profileBtn">🧑 Player</button>
+  <button class="btn alt" id="profileBtn">👧 Profile</button>
   <div class="credit" id="menuWho"></div>
   <button class="btn ghost" id="quitBtn">✖ Quit</button>
   <div class="credit">a little game for Hazel 💛</div>
@@ -238,11 +252,13 @@
   </div>
   <div id="charMid">
     <button class="arrow" id="charPrev">◀</button>
-    <div id="cosCol">
-      <button class="arrow" id="cosUp">▲</button>
-      <button class="arrow" id="cosDown">▼</button>
+    <div id="rightCol">
+      <div id="cosCol">
+        <button class="arrow" id="cosUp">▲</button>
+        <button class="arrow" id="cosDown">▼</button>
+      </div>
+      <button class="arrow" id="charNext">▶</button>
     </div>
-    <button class="arrow" id="charNext">▶</button>
   </div>
   <div id="charBot">
     <div id="cosName">Costume: Original</div>
@@ -263,13 +279,13 @@
 
 <div class="screen hidden" id="profileScreen">
   <div class="panel">
-    <h2>🧑 Who's playing?</h2>
+    <h2>👧 Who's playing?</h2>
     <div class="tag" style="margin-bottom:10px">Your unlocks are saved under this name on this device.</div>
     <div class="nameFields">
       <input id="profInput" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="Your name" />
       <button class="btn small" id="profSave">Save</button>
     </div>
-    <div id="profList" style="margin-top:12px"></div>
+    <div id="profList" style="margin-top:14px"></div>
     <button class="btn small" id="profBack" style="margin-top:12px">◀ Back</button>
   </div>
 </div>
@@ -609,9 +625,17 @@ const CHARACTERS=[
    helpers handed to `d()` already carry their facing and bob.
    ========================================================================= */
 const ACCS=[
- {id:'fruitcrown',n:'Fruit Crown',g:'Reward',sl:'head',d:a=>{ a.y(0,a.top+0.09,0,0.40,0.14,C(0xffd34d));
-   for(let k=0;k<5;k++){const h=k/5*6.2832;
-     a.s(Math.cos(h)*0.33,a.top+0.25,Math.sin(h)*0.33,0.12,[C(0xd6183f),C(0xf03047),C(0x4f61d8),C(0xff8c1a),C(0x9bd35a)][k]);}}},
+ {id:'fruitcrown',n:'Fruit Crown',g:'Reward',sl:'head',d:a=>{
+   // a proper crown: a wide band, gold points, and a berry on each point
+   const R=0.52;
+   a.y(0,a.top+0.16,0, R,0.30, C(0xffd34d));
+   a.y(0,a.top+0.03,0, R*1.06,0.10, C(0xe0b430));
+   for(let k=0;k<6;k++){ const h=k/6*6.2832;
+     a.k(Math.cos(h)*R*0.92, a.top+0.52, Math.sin(h)*R*0.92, 0.13,0.44, C(0xffd34d));
+     a.s(Math.cos(h)*R*0.92, a.top+0.78, Math.sin(h)*R*0.92, 0.15,
+       [C(0xd6183f),C(0xf03047),C(0x4f61d8),C(0xff8c1a),C(0x9bd35a),C(0x9a7bff)][k]); }
+   a.k(0,a.top+0.60,0, 0.15,0.52, C(0xffe07a));
+   a.s(0,a.top+0.92,0, 0.17, C(0xff4d6d)); }},
  {id:'cowboy',n:'Cowboy Hat',g:'Cowboy',sl:'head',d:a=>{ a.y(0,a.top+0.06,0,0.62,0.09,C(0x8a5a2a));
    a.y(0,a.top+0.24,0,0.33,0.30,C(0x9c6a34)); a.y(0,a.top+0.12,0,0.35,0.07,C(0x5d3a18)); }},
  {id:'sheriff',n:'Sheriff Star',g:'Cowboy',sl:'face',d:a=>{ for(let k=0;k<5;k++){const h=k/5*6.2832;
@@ -1259,6 +1283,21 @@ function drawFruitTop(s,t){
 }
 
 /* long banana bridge segment (box collision, banana look) */
+/* the barred gate over the route: shut until the princess below is freed */
+function drawGate(s){
+  const hw=s.w/2, top=s.y+s.h/2, bot=s.y-s.h/2;
+  box(s.x, s.y, s.z, s.w, 0.36, s.d, C(0x6b7684));                 // head and sill
+  box(s.x, bot+0.18, s.z, s.w, 0.36, s.d, C(0x6b7684));
+  for(const sgn of [-1,1]) box(s.x+sgn*hw, s.y, s.z, 0.44, s.h, s.d, C(0x8a919c));
+  for(let k=0;k<11;k++)                                            // the bars
+    cyl(s.x-hw+0.6+k*((s.w-1.2)/10), s.y, s.z, 0.14, s.h-0.5, C(0x9aa4b2));
+  for(let k=0;k<3;k++)
+    box(s.x, bot+1.4+k*((s.h-2.0)/2), s.z, s.w-0.9, 0.20, s.d*0.7, C(0x7b8694));
+  // a big padlock, so it is obvious what is holding you up
+  box(s.x, s.y, s.z-s.d/2-0.14, 0.80,0.92,0.26, C(0xffd34d));
+  box(s.x, s.y+0.62, s.z-s.d/2-0.14, 0.34,0.46,0.20, C(0xd9b13a));
+  box(s.x, s.y-0.06, s.z-s.d/2-0.30, 0.20,0.30,0.10, C(0x6b5a1a));
+}
 /* a thick chequered stripe painted across the summit — the finish line */
 function drawFinish(f){
   const n=12, cw=f.w/n, row=0.62;
@@ -1315,9 +1354,8 @@ function drawCage(c,t){
 }
 /* the folk you meet: a herald, a princess, a king, a queen */
 function drawPerson(p,t,T){
-  // These are grown-ups and the climbers are children, so they stand a little
-  // taller. Everything below is authored at child scale and then scaled up,
-  // which keeps the proportions honest.
+  // Grown-ups, and the climbers are children, so they stand a little taller.
+  // Authored at child scale then scaled up, which keeps the proportions honest.
   const SC=1.34;
   const royal = p.kind==='king'||p.kind==='queen';
   const base = p.kind==='herald' ? C(0x5f7dd6) : T.coinCol;
@@ -1335,35 +1373,60 @@ function drawPerson(p,t,T){
   Y(0,0.46,0, 0.42,0.92, gown);                            // skirt / robe
   Y(0,0.62,0, 0.47,0.14, mixc(gown,[1,1,1],0.22));
   Y(0,1.06,0, 0.30,0.36, gown);                            // bodice
-  B(0,1.32,0, 0.30,0.18,0.26, skin);                       // neck
-  B(0,1.62,0, 0.46,0.44,0.42, skin);                       // head
-  B(0,1.85,0, 0.50,0.14,0.46, p.kind==='king'? C(0x8a6a4a) : C(0x6b3f1d));
-  if(!royal && p.kind!=='herald') B(0,1.56,-0.27, 0.42,0.58,0.10, C(0x6b3f1d)); // long hair
+  B(0,1.30,0, 0.30,0.16,0.26, skin);                       // neck
+  // a big storybook head, so the face has room to be expressive
+  const HW=0.62, HH=0.58, HY=1.68, FZ=HW/2+0.01;
+  B(0,HY,0, HW,HH,HW*0.92, skin);
+  B(0,HY+0.30,0, HW*1.06,0.16,HW*0.98, p.kind==='king'? C(0x8a6a4a) : C(0x6b3f1d));
+  if(!royal && p.kind!=='herald'){                          // the princess: long hair
+    const HAIR=C(0xc9762e);
+    B(0,HY+0.30,0, HW*1.08,0.18,HW*1.0, HAIR);             // fringe over the crown line
+    B(0,HY-0.06,-0.34, 0.56,0.78,0.12, HAIR);              // the fall down her back
+    for(const sx of [-1,1]){                               // locks either side of her face
+      B(sx*0.34,HY-0.10, 0.02, 0.14,0.62,0.44, HAIR);
+      B(sx*0.30,HY-0.42, 0.06, 0.13,0.20,0.30, HAIR); } }
+  if(p.kind==='king'){                                     // a fine white beard
+    B(0,HY-0.30,0.16, 0.46,0.30,0.28, C(0xf0ead6));
+    B(0,HY-0.46,0.12, 0.34,0.22,0.22, C(0xf0ead6));
+    B(-0.20,HY-0.10,FZ-0.02, 0.10,0.16,0.03, C(0xf0ead6));
+    B( 0.20,HY-0.10,FZ-0.02, 0.10,0.16,0.03, C(0xf0ead6)); }
   // crown for the royals, a slim tiara otherwise
-  const cw = royal? 0.30 : 0.20;
-  Y(0,1.94,0, cw, royal?0.15:0.08, C(0xffd34d));
+  const cw = royal? 0.38 : 0.26;
+  Y(0,HY+0.42,0, cw, royal?0.18:0.10, C(0xffd34d));
   for(let i2=0;i2<5;i2++){ const a=i2/5*6.2832;
-    K(Math.cos(a)*cw*0.82, 2.06, Math.sin(a)*cw*0.82, 0.055, royal?0.22:0.13, C(0xffd34d)); }
-  // arms
+    K(Math.cos(a)*cw*0.82, HY+0.58, Math.sin(a)*cw*0.82, 0.065, royal?0.26:0.15, C(0xffd34d)); }
+  /* ---- arms ---- */
   if(cheer){                                               // both arms up
     B(-0.38,1.28, 0.02, 0.16,0.56,0.16, skin, 0.28);
     B( 0.38,1.28, 0.02, 0.16,0.56,0.16, skin,-0.28);
-    B(-0.46,1.62, 0.02, 0.16,0.16,0.16, skin);
-    B( 0.46,1.62, 0.02, 0.16,0.16,0.16, skin);
-  } else if(p.clap){                                       // hands meeting
-    const c2=Math.abs(Math.sin(t*7))*0.20;
-    B(-0.28-c2,1.06, 0.30, 0.16,0.50,0.16, skin, -1.0);
-    B( 0.28+c2,1.06, 0.30, 0.16,0.50,0.16, skin,  1.0);
-    B(-0.13-c2,1.02, 0.44, 0.16,0.16,0.16, skin);
-    B( 0.13+c2,1.02, 0.44, 0.16,0.16,0.16, skin);
+    B(-0.46,1.62, 0.02, 0.17,0.17,0.17, skin);
+    B( 0.46,1.62, 0.02, 0.17,0.17,0.17, skin);
+  } else if(p.clap){
+    // Hands meet straight out in front. The arms used to be rolled a full
+    // radian, which folded the wrists back on themselves.
+    const c2=Math.abs(Math.sin(t*7))*0.13;
+    B(-0.30-c2,1.10, 0.30, 0.16,0.16,0.62, skin);          // upper arm, straight forward
+    B( 0.30+c2,1.10, 0.30, 0.16,0.16,0.62, skin);
+    B(-0.16-c2,1.10, 0.62, 0.18,0.20,0.14, skin);          // hand, in line with the arm
+    B( 0.16+c2,1.10, 0.62, 0.18,0.20,0.14, skin);
   } else {
     B(-0.40,1.02, 0.02, 0.16,0.54,0.16, skin);
     B( 0.40,1.02, 0.02, 0.16,0.54,0.16, skin);
   }
-  // a little face so they read as friendly
-  const D=(lx,ly,w2,h2,c)=>B(lx,ly,0.215, w2,h2,0.02, c);
-  D(-0.11,1.67, 0.08,0.10, C(0x241f2b)); D(0.11,1.67, 0.08,0.10, C(0x241f2b));
-  D(0,1.52, 0.16,0.06, C(0xc2455c));
+  /* ---- face: big eyes, brows and a proper open smile ---- */
+  const D=(lx,ly,w2,h2,c,layer)=>B(lx,ly,FZ+0.004*(layer||0), w2,h2,0.02, c);
+  for(const sx of [-1,1]){
+    D(sx*0.15,HY+0.05, 0.17,0.19, C(0xffffff),1);           // eye white
+    D(sx*0.15,HY+0.03, 0.10,0.11, C(0x241f2b),2);           // pupil
+    D(sx*0.17,HY+0.09, 0.05,0.05, C(0xffffff),3);           // glint
+    D(sx*0.15,HY+0.20, 0.18,0.035, mixc(C(0x6b3f1d),[0,0,0],0.2),2); // brow
+    D(sx*0.24,HY-0.10, 0.11,0.07, C(0xffb0b8),1);           // rosy cheek
+  }
+  // an open, happy mouth — wider still when they are celebrating
+  const mw = cheer? 0.26 : 0.21, mh = cheer? 0.17 : 0.11;
+  D(0,HY-0.17, mw,mh, C(0x8c2b3a),1);
+  D(0,HY-0.21, mw*0.74,mh*0.42, C(0xff8fa3),2);             // tongue
+  D(0,HY-0.11, mw*0.92,0.03, C(0xffffff),3);                // teeth
 }
 /* a log lying across the route: a round timber with sawn end-grain */
 function drawLog(s){
@@ -1379,13 +1442,16 @@ function drawLog(s){
 /* a square wafer pad — the crumbling ones look identical until they crack */
 function drawPad(s,t){
   const top=s.y+s.h/2, shake=s.timer>=0 ? Math.sin(t*70)*0.06 : 0;
-  const base=C(0xe8cfa0), face=C(0xf7e6c4);
+  // rainbow pads. Both columns in a row share a colour, so the colour can
+  // never hint at which side is the safe one.
+  const hue=s.hue||C(0xe8cfa0);
+  const base=hue, face=mixc(hue,[1,1,1],0.38);
   box(s.x+shake, s.y, s.z, s.w, s.h, s.d, s.timer>=0? mixc(base,[1,0.45,0.3],0.40) : base);
   box(s.x+shake, top-0.04, s.z, s.w*0.88, 0.08, s.d*0.88, s.timer>=0? mixc(face,[1,0.5,0.35],0.35) : face);
   // a waffle grid pressed into the surface
   for(let k=-1;k<=1;k++){
-    box(s.x+shake, top+0.02, s.z+k*s.d*0.26, s.w*0.84, 0.04, 0.07, C(0xd8b47c));
-    box(s.x+shake+k*s.w*0.26, top+0.02, s.z, 0.07, 0.04, s.d*0.84, C(0xd8b47c)); }
+    box(s.x+shake, top+0.02, s.z+k*s.d*0.26, s.w*0.84, 0.04, 0.07, mixc(hue,[0,0,0],0.28));
+    box(s.x+shake+k*s.w*0.26, top+0.02, s.z, 0.07, 0.04, s.d*0.84, mixc(hue,[0,0,0],0.28)); }
   if(s.timer>=0) for(let k=0;k<3;k++)                            // it's going!
     box(s.x+shake+(k-1)*s.w*0.20, top+0.06, s.z+(k-1)*s.d*0.18, 0.07,0.05,s.d*0.42, C(0x6a4a12), 0.45);
 }
@@ -1582,6 +1648,7 @@ function drawSplash(){
 /* =========================================================================
    LEVELS
    ========================================================================= */
+const RAINBOW=[C(0xff5566),C(0xff9b3d),C(0xffd34d),C(0x66d46a),C(0x4dc3ff),C(0x9a7bff),C(0xff8fd0)];
 function buildLevel(idx){
   const T=THEMES[idx];
   const solids=[], spikes=[], fans=[], swings=[], checks=[], coins=[];
@@ -1700,8 +1767,9 @@ function buildLevel(idx){
     arch  ={x:s.x, y:top, z:finish.z, w:side*0.60, h:5.2};
     const pz=s.z+side*0.30;
     goal={x:s.x, y:top, z:pz, r:2.4, portal:true, to:'next'};
-    (greeters||[]).forEach(g=>npcs.push({x:s.x+g.dx, y:top, z:pz+0.6,
-      kind:g.kind, ang:3.1416, clap:!!g.clap, greeter:true}));
+    (greeters||[]).forEach(g=>npcs.push({x:s.x+g.dx, y:top, z:pz+0.6+(g.dz||0),
+      kind:g.kind, ang:3.1416, clap:!!g.clap, cheer:!!g.cheer,
+      line:g.line||null, greeter:true}));
     coinLine(s.x, top+0.9, s.z-side*0.36, 3, side*0.16);
     return s;
   }
@@ -1728,15 +1796,18 @@ function buildLevel(idx){
     for(let k=0;k<rows;k++){
       cz += (k===0 ? lastR+side/2+gap : side+1.5);
       cy += dy;
+      const hue=RAINBOW[k%RAINBOW.length];
       for(const sgn of [-1,1]){
         const solid = (sgn<0) === safeLeft;
         const px = cx+sgn*spread;
         const s={type:'box',pad:true,x:px,y:cy,z:cz,w:side,h:1.0,d:side,
-                 bx:px,by:cy,bz:cz};
+                 bx:px,by:cy,bz:cz,hue:hue};
         if(!solid){ s.crumb=true; s.quick=true; s.timer=-1; s.fall=0; }
         solids.push(s);
       }
-      coins.push({x:cx+(safeLeft?-spread:spread), y:cy+1.5, z:cz, got:false, ph:k});
+      // the coin used to sit on the safe pad every time, which gave the whole
+      // puzzle away — put it on a random side instead
+      coins.push({x:cx+(Math.random()<0.5?-spread:spread), y:cy+1.5, z:cz, got:false, ph:k});
     }
     lastR=side/2; return {x:cx,y:cy,z:cz,safeLeft};
   }
@@ -1777,18 +1848,35 @@ function buildLevel(idx){
     cx=goodEnd.x; cy=goodEnd.y; cz=goodEnd.z; lastR=goodEnd.r;
     return j;
   }
+  // A wall straight across the route that will not budge until the cage below
+  // is unlocked, so the rescue cannot be skipped.
+  function cageGate(cage,gap){
+    // A thin slab standing in the gap the route already has. Advancing the
+    // route past it stretched the following jump to 5.6 units, which is nearly
+    // the limit, so the spacing is deliberately left alone.
+    // It is also nudged off the route's centre line: a full 14 wide centred on
+    // cx clipped into the cage-spur step sitting just to the left of it.
+    const halfD=0.5;
+    const wz=cz+lastR+halfD+gap, wx=cx+0.5;
+    const g={type:'box',gate:true,cageOf:cage,x:wx,y:cy+2.6,z:wz,
+      w:12.0,h:6.0,d:halfD*2,bx:wx,by:cy+2.6,bz:wz};
+    solids.push(g); return g;
+  }
   // A spur that drops off the route to the caged princess and steps back up
   // again — you have to climb back out once she is free.
   function cageSpur(){
     const bx=cx, by=cy, bz=cz, br=lastR;
     cx=bx-8.5; cz=bz+2.0; cy=by-1.9; lastR=0;
     const step=disc(0,0,0,2.4); coinsOn(step,1);
+    const sx=cx, sz=cz;                 // remember where the player drops in from
     cx-=9.0; cy-=1.9; cz+=5.0;
     const pad=disc(0,0,0,5.2);
     const top=pad.y+pad.h/2;
     const cage={x:pad.x, y:top, z:pad.z, r:2.3, open:false};
     cages.push(cage);
-    npcs.push({x:pad.x, y:top, z:pad.z, kind:'princess', ang:0, cageOf:cage});
+    // face her at the step you arrive on, so you meet her eyes through the bars
+    npcs.push({x:pad.x, y:top, z:pad.z, kind:'princess',
+      ang:Math.atan2(sx-pad.x, sz-pad.z), cageOf:cage});
     cx=bx; cy=by; cz=bz; lastR=br;      // back on the main route
     return pad;
   }
@@ -1903,6 +1991,7 @@ function buildLevel(idx){
     s=hop(0, 3.0, 1.4, 3.2); coinsOn(s,2); chk(s);
     // ---- drop down the spur to her cage, then climb back up ----
     cageSpur();
+    cageGate(cages[cages.length-1], 0.9);   // no way past until she is free
     s=hop(2.0, 2.6, 1.2, 3.0);    coinsOn(s,2);
     const az=s.z+7.0, ay=s.y+8.0;
     swings.push({ax:s.x,ay:ay,az:az,len:5.4,dirx:0,dirz:1,ang:-0.55,angVel:0,
@@ -1925,8 +2014,11 @@ function buildLevel(idx){
     const b=bananaBridge(0, 3.0, 1.4, 7, 3.0); cz=b.z;
     s=hop(0, 2.8, 1.4, 3.0); coinsOn(s,3); chk(s);
     // the king and queen of blueberry land are waiting at the top, clapping
-    finishArea(3.0, 1.5, 22.0, [{kind:'king', dx:-4.6, clap:true},
-                                {kind:'queen', dx:4.6, clap:true}]);
+    finishArea(3.0, 1.5, 22.0, [
+      {kind:'king',  dx:-5.2, clap:true,
+       line:'Thank you for rescuing my daughter! 👑'},
+      {kind:'queen', dx:5.2, clap:true},
+      {kind:'princess', dx:2.4, dz:3.4, cheer:true}]);
   }
 
   return { theme:T, solids, spikes, fans, swings, checks, coins, goal, spawn, boat,
@@ -2157,7 +2249,9 @@ function postPhysics(t){
       if(player.hasKey){ c.open=true;
         const pr=world.npcs.find(n=>n.cageOf===c);
         if(pr) pr.cheer=true;
-        Audio_.sfx('win'); showMsg('You freed the princess! 👑 Now climb back up',2600); }
+        // the wall barring the route above her opens at the same moment
+        for(const g of world.solids) if(g.gate && g.cageOf===c) g.dead=true;
+        Audio_.sfx('win'); showMsg('You freed the princess! 👑 The way up is open',2600); }
       else if(!c.told){ c.told=true; showMsg('It’s locked — find the key! 🔒',1900); } } }
 
   // dead-end teleporters send you back to the boat
@@ -2172,7 +2266,7 @@ function postPhysics(t){
      Math.abs(player.y-F.y)<3.2){
     F.crossed=true; player.celebrateUntil=t+2.4; Audio_.sfx('level');
     showMsg('Finish! 🎉',1700);
-    for(const n of world.npcs) if(n.greeter) n.clap=true; }
+    for(const n of world.npcs) if(n.greeter && !n.cheer) n.clap=true; }
 
   const g=world.goal;
   if(g){ const dx=player.x-g.x,dz=player.z-g.z;
@@ -2258,6 +2352,7 @@ function render(t){
     if(s.dead && s.y<-14) continue;
     if(s.nodraw) continue;              // collision-only helpers (bow, cabin)
     if(s.boat){ drawBoat(s,t); continue; }
+    if(s.gate){ if(s.dead) continue; drawGate(s); continue; }
     if(s.log){ drawLog(s); continue; }
     if(s.pad){ drawPad(s,t); continue; }
     if(s.belt){ drawBelt(s,t); continue; }
@@ -2558,8 +2653,7 @@ function openAccDrawer(){
   const grid=document.getElementById('accGrid'); grid.innerHTML='';
   const p=prof(), mine=myAccs();
   if(!mine.length){
-    grid.innerHTML='<div class="tag" style="grid-column:1/-1">Nothing yet! Climb all three towers '
-      +'and you\u2019ll earn your first accessory. 🎁</div>';
+    grid.innerHTML='<div id="accEmpty">🔒<br>Beat the game to unlock fun accessories!</div>';
   } else {
     const mk=(id,label,tag,on)=>{ const b=document.createElement('button');
       b.className='accCard'+(on?' on':''); b.innerHTML=label+'<span class="tag">'+tag+'</span>';
@@ -2580,12 +2674,14 @@ function updateProfileScreen(){
   const list=document.getElementById('profList');
   const names=Object.keys(profiles);
   if(!names.length){ list.innerHTML='<div class="tag">No players saved yet.</div>'; return; }
-  list.innerHTML='<div class="tag" style="margin-bottom:6px">Saved players — tap to switch:</div>';
-  names.forEach(n=>{ const b=document.createElement('button');
-    b.className='btn small'; b.style.margin='4px';
-    b.textContent=(n===profileName?'▶ ':'')+n+' ('+profiles[n].beaten+')';
-    b.addEventListener('click',()=>{ useProfile(n); Audio_.sfx('click'); updateProfileScreen(); updateMenuWho(); });
-    list.appendChild(b); });
+  list.innerHTML='<div class="tag" style="margin-bottom:8px">Saved players:</div>';
+  const sel=document.createElement('select'); sel.id='profPick';
+  names.forEach(n=>{ const o=document.createElement('option'); o.value=n;
+    o.textContent=n+'  ('+profiles[n].beaten+' win'+(profiles[n].beaten===1?'':'s')+')';
+    if(n===profileName) o.selected=true; sel.appendChild(o); });
+  sel.addEventListener('change',()=>{ useProfile(sel.value); Audio_.sfx('click');
+    updateProfileScreen(); updateMenuWho(); });
+  list.appendChild(sel);
 }
 function updateMenuWho(){ const e=document.getElementById('menuWho');
   if(e) e.textContent = profileName ? ('playing as '+profileName+' 💛') : 'tap Player to save your unlocks'; }
