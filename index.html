@@ -204,6 +204,8 @@
   .lbrow .who{ flex:1; text-align:left; padding:0 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lbrow.best{ background:linear-gradient(#ffa93a, #ef7a12); border-color:#7d3c02; }
   .lbrow.best .rank{ background:rgba(0,0,0,.22); }
+  .lbrow.you{ border-color:var(--gold); box-shadow:0 3px 0 rgba(0,0,0,.3), inset 0 0 0 2px rgba(255,212,81,.45); }
+  .lbrow.you .who small{ font-size:.72em; opacity:.75; }
 
   /* ---- profile stat tiles ---- */
   .statRow{ display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:9px; margin-top:11px; }
@@ -343,17 +345,11 @@
   @keyframes spin{ 0%,40%{transform:rotate(0)} 60%,100%{transform:rotate(90deg)} }
   .credit{ font-size:13px; font-weight:800; opacity:.7; text-shadow:0 2px 0 rgba(0,0,0,.4); }
 
-  /* winner's name entry — inputs need selection and touch back on */
+  /* the winner's line: their time goes up under their profile name, no typing */
   #nameRow{ margin:2px 0 14px; }
   #nameLabel{ display:block; font-size:clamp(12px,2.9vw,16px); font-weight:900; text-transform:uppercase;
     letter-spacing:.6px; opacity:.92; margin-bottom:8px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
   .nameFields{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; }
-  #nameInput{ pointer-events:auto; -webkit-user-select:text; user-select:text; touch-action:auto;
-    width:min(58vw,240px); padding:12px 16px; border-radius:13px; border:3px solid var(--ink);
-    background:#fff; color:#123; font-size:clamp(16px,3.6vw,20px); font-weight:900; text-align:center; }
-  #nameInput:focus{ outline:none; box-shadow:0 0 0 4px rgba(255,212,81,.55); }
-  #nameInput:disabled{ background:#d8dee4; color:#6a7580; }
-  #nameSave{ margin:0; }
 
   /* a very short landscape screen: the buttons matter more than the blurb */
   @media (max-height: 430px){
@@ -667,13 +663,7 @@
     <h1 class="logo" id="winTitle" style="font-size:clamp(30px,8vw,58px)">🎉 YOU WON! 🎉</h1>
     <div class="tag" id="winStats"></div>
     <div id="unlockNote"></div>
-    <div id="nameRow">
-      <label for="nameInput" id="nameLabel">Put your name on the leaderboard!</label>
-      <div class="nameFields">
-        <input id="nameInput" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Your name" />
-        <button class="btn small gold" id="nameSave">Save</button>
-      </div>
-    </div>
+    <div id="nameRow"><div id="nameLabel"></div></div>
     <button class="btn gold" id="winAgain">↺ Play Again</button>
     <button class="btn ghost" id="winMenu">🏠 Main Menu</button>
   </div>
@@ -948,7 +938,10 @@ const opts={ music:true, sfx:true, cheat:false };
 try{ Object.assign(opts, JSON.parse(localStorage.getItem('ft_opts')||'{}')); }catch(e){}
 function saveOpts(){ try{ localStorage.setItem('ft_opts',JSON.stringify(opts)); }catch(e){} }
 function loadScores(){ try{ return JSON.parse(localStorage.getItem('ft_scores')||'[]'); }catch(e){ return []; } }
-function saveScore(name,time){ const s=loadScores(); s.push({name,time}); s.sort((a,b)=>a.time-b.time);
+function saveScore(name,time){
+  const s=loadScores().filter(r=>r.name!==name || r.time<time);   // keep their best
+  if(!s.some(r=>r.name===name)) s.push({name,time});
+  s.sort((a,b)=>a.time-b.time);
   try{ localStorage.setItem('ft_scores',JSON.stringify(s.slice(0,8))); }catch(e){} }
 
 /* =========================================================================
@@ -2702,11 +2695,7 @@ let pendingTime=null, savedThisWin=false;
 function winGame(){ running=false; setState('win'); Audio_.sfx('win'); Audio_.stopMusic();
   pendingTime=runTime; savedThisWin=false;
   { const p=prof(); if(p && (p.best==null || runTime<p.best)){ p.best=runTime; saveProfiles(); } }
-  const inp=document.getElementById('nameInput'), btn=document.getElementById('nameSave');
-  let last=''; try{ last=localStorage.getItem('ft_lastName')||''; }catch(e){}
-  inp.value=last||CHARACTERS[chosen].name; inp.disabled=false;
-  btn.disabled=false; btn.textContent='Save';
-  document.getElementById('nameLabel').textContent='Put your name on the leaderboard!';
+  saveWinName();                       // it goes up under your profile name, no typing
   document.getElementById('winStats').innerHTML='You climbed all three towers in <b>'+fmtTime(runTime)+'</b>! 🍒🍓🫐';
   const note=document.getElementById('unlockNote'), got=grantUnlock();
   if(!got) note.textContent = prof() ? '🎉 You have unlocked everything there is!' : '';
@@ -2714,12 +2703,10 @@ function winGame(){ running=false; setState('win'); Audio_.sfx('win'); Audio_.st
   else note.innerHTML='🎁 Unlocked costume for '+CHARACTERS[got.item.ci].name+': <b>'+got.item.n+'</b>'; }
 function saveWinName(){
   if(savedThisWin || pendingTime==null) return;
-  const inp=document.getElementById('nameInput'), btn=document.getElementById('nameSave');
-  const nm=((inp.value||'').trim().slice(0,12)) || CHARACTERS[chosen].name;
+  const nm=(profileName||'').trim() || CHARACTERS[chosen].name;
   saveScore(nm, pendingTime); savedThisWin=true;
-  try{ localStorage.setItem('ft_lastName', nm); }catch(e){}
-  inp.disabled=true; btn.disabled=true; btn.textContent='Saved ✓';
-  document.getElementById('nameLabel').textContent='Nice one, '+nm+' — you\u2019re on the board! 🏆'; }
+  document.getElementById('nameLabel').innerHTML =
+    'Nice one, '+esc(nm)+' — you\u2019re on the board! 🏆'; }
 function gameOver(){ setState('over'); Audio_.stopMusic(); saveProfiles(); }
 function nextLevel(){ setState('play'); startLevel(levelIdx+1); if(opts.music) Audio_.startMusic(); }
 
@@ -3012,10 +2999,8 @@ click('resumeBtn',()=>togglePause());
 click('restartBtn',()=>{ setState('play'); startLevel(levelIdx); running=true; if(opts.music)Audio_.startMusic(); });
 click('pMenuBtn',()=>{ setState('menu'); Audio_.stopMusic(); running=false; });
 click('levelNext',()=>nextLevel());
-click('nameSave',()=>saveWinName());
-document.getElementById('nameInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); saveWinName(); } });
-click('winAgain',()=>{ saveWinName(); startRun(); });      // never lose a time
-click('winMenu',()=>{ saveWinName(); setState('menu'); });
+click('winAgain',()=>startRun());
+click('winMenu',()=>setState('menu'));
 click('overRetry',()=>{ lives=3; setState('play'); startLevel(levelIdx); running=true; if(opts.music)Audio_.startMusic(); });
 click('overMenu',()=>setState('menu'));
 document.getElementById('pauseBtn').addEventListener('click',()=>{ Audio_.sfx('click'); togglePause(); });
@@ -3030,7 +3015,7 @@ wireToggle('tgCheat','cheat',()=>updateHUD());
 
 function fillLeaderboard(){ const s=loadScores(), el=document.getElementById('lbList');
   if(!s.length){ el.innerHTML='<div style="opacity:.7;padding:16px">No times yet — be the first! 🏁</div>'; return; }
-  el.innerHTML=s.map((r,i)=>`<div class="lbrow ${i===0?'best':''}"><span class="rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</span><span class="who">${esc(r.name)}</span><span>⏱ ${fmtTime(r.time)}</span></div>`).join(''); }
+  el.innerHTML=s.map((r,i)=>`<div class="lbrow ${i===0?'best':''} ${r.name===profileName?'you':''}"><span class="rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</span><span class="who">${esc(r.name)}${r.name===profileName?' <small>(you)</small>':''}</span><span>⏱ ${fmtTime(r.time)}</span></div>`).join(''); }
 function updateCharUI(){ const c=CHARACTERS[chosen];
   document.getElementById('charName').textContent=c.name;
   const dots=document.getElementById('charDots'); dots.innerHTML='';
