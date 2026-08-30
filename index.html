@@ -131,6 +131,18 @@
   @keyframes spin{ 0%,40%{transform:rotate(0)} 60%,100%{transform:rotate(90deg)} }
   .credit{ position:absolute; bottom:12px; font-size:13px; opacity:.55; }
 
+  /* winner's name entry — inputs need selection and touch back on */
+  #nameRow{ margin:2px 0 14px; }
+  #nameLabel{ display:block; font-size:clamp(13px,3vw,17px); font-weight:800; opacity:.9; margin-bottom:8px; }
+  .nameFields{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; }
+  #nameInput{ pointer-events:auto; -webkit-user-select:text; user-select:text; touch-action:auto;
+    width:min(58vw,240px); padding:13px 16px; border-radius:14px; border:2px solid rgba(255,255,255,.35);
+    background:rgba(255,255,255,.94); color:#3a1020; font-size:clamp(16px,3.6vw,20px); font-weight:800;
+    text-align:center; }
+  #nameInput:focus{ outline:none; border-color:#ffd34d; box-shadow:0 0 0 4px rgba(255,211,77,.35); }
+  #nameInput:disabled{ background:rgba(255,255,255,.55); color:#6a5560; }
+  #nameSave{ margin:0; }
+
   @media (max-height: 520px){
     h1.logo{ font-size:clamp(26px,7.5vw,46px); }
     .logo .sub{ font-size:.3em; letter-spacing:4px; margin-top:2px; }
@@ -232,6 +244,13 @@
 <div class="screen hidden" id="winScreen">
   <h1 class="logo" id="winTitle" style="font-size:clamp(34px,9vw,64px)">🎉 YOU WON! 🎉</h1>
   <div class="tag" id="winStats"></div>
+  <div id="nameRow">
+    <label for="nameInput" id="nameLabel">Put your name on the leaderboard!</label>
+    <div class="nameFields">
+      <input id="nameInput" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Your name" />
+      <button class="btn small" id="nameSave">Save</button>
+    </div>
+  </div>
   <button class="btn" id="winAgain">↺ Play Again</button>
   <button class="btn ghost" id="winMenu">🏠 Main Menu</button>
 </div>
@@ -362,6 +381,19 @@ const CYL=(()=>{ const N=20,v=[],i=[];
   for(let s=0;s<N;s++) i.push(bc,bc+2+s,bc+1+s);
   return makeMesh(v,i); })();
 
+// 4-sided pyramid (square footprint): every face is a flat triangle, so it
+// reads as sharp and angular instead of the round 16-sided CONE.
+const PYRAMID=(()=>{ const N=4,v=[],i=[];
+  for(let s=0;s<N;s++){ const a0=s/N*6.2832+0.7854,a1=(s+1)/N*6.2832+0.7854;
+    const x0=Math.cos(a0)*.5,z0=Math.sin(a0)*.5,x1=Math.cos(a1)*.5,z1=Math.sin(a1)*.5;
+    const nx=Math.cos((a0+a1)/2),nz=Math.sin((a0+a1)/2),b=v.length/6;
+    v.push(x0,-.5,z0,nx,.6,nz, x1,-.5,z1,nx,.6,nz, 0,.5,0,nx,.6,nz);
+    i.push(b,b+1,b+2); }
+  const bc=v.length/6; v.push(0,-.5,0,0,-1,0);
+  for(let s=0;s<=N;s++){const a=s/N*6.2832+0.7854; v.push(Math.cos(a)*.5,-.5,Math.sin(a)*.5,0,-1,0);}
+  for(let s=0;s<N;s++) i.push(bc,bc+2+s,bc+1+s);
+  return makeMesh(v,i); })();
+
 const CONE=(()=>{ const N=16,v=[],i=[];
   for(let s=0;s<N;s++){ const a0=s/N*6.2832,a1=(s+1)/N*6.2832;
     const x0=Math.cos(a0)*.5,z0=Math.sin(a0)*.5,x1=Math.cos(a1)*.5,z1=Math.sin(a1)*.5;
@@ -405,6 +437,7 @@ function draw(mesh,model,col){ if(mesh!==curMesh){ bindMesh(mesh); curMesh=mesh;
 function box(x,y,z,sx,sy,sz,c,ry,rz){ draw(CUBE,M.compose(x,y,z,ry||0,sx,sy,sz,rz),c); }
 function cyl(x,y,z,r,h,c,ry,rz){ draw(CYL,M.compose(x,y,z,ry||0,r*2,h,r*2,rz),c); }
 function cone(x,y,z,r,h,c,ry,rz){ draw(CONE,M.compose(x,y,z,ry||0,r*2,h,r*2,rz),c); }
+function pyramid(x,y,z,r,h,c,ry,rz){ draw(PYRAMID,M.compose(x,y,z,ry||0,r*2,h,r*2,rz),c); }
 function sph(x,y,z,r,c,sy,ry){ draw(SPH,M.compose(x,y,z,ry||0,r*2,(sy===undefined?r*2:sy),r*2,0),c); }
 function tor(x,y,z,r,c,ry,rz){ draw(TOR,M.compose(x,y,z,ry||0,r*2,r*2,r*2,rz),c); }
 // dome: flat cut face sits exactly at `top`, body hangs `depth` below it
@@ -485,7 +518,7 @@ function saveScore(name,time){ const s=loadScores(); s.push({name,time}); s.sort
    big expressive faces. Four kids plus three animal friends.
    ========================================================================= */
 const CHARACTERS=[
-  { name:'Lily', desc:'Blonde hair, white tee & jeans', kind:'human',
+  { name:'Hazel', desc:'Blonde hair, white tee & jeans', kind:'human',
     skin:C(0xffd2a6), hair:C(0xffdd55), shirt:C(0xffffff), legs:C(0x4a74c8), shoe:C(0xff4d6d),
     eye:C(0x3f7ad6), hairStyle:'long', bangs:true, blush:true, bigEyes:true, sparkle:true, lashes:true, laces:true },
   { name:'Rosie', desc:'Pink pigtails & a glitter skirt', kind:'human',
@@ -521,7 +554,7 @@ function drawGlove(B,S, lx,ly,lz, col, flip){
   S(lx,ly+0.13,lz, 0.155, col, 0.10);                               // cuff
 }
 
-function drawChar(ch, x,y,z, face, walk, airborne, t){
+function drawChar(ch, x,y,z, face, walk, airborne, t, climbing){
   const cs=Math.cos(face), sn=Math.sin(face);
   // The soles are modelled at local y=-1.32 but the collision floor is -hh (-0.9),
   // so lift every part by this much or the character sinks into the platform.
@@ -560,10 +593,19 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   /* arms + gloved hands */
   const armSw=-sw;
   const sleeve = ch.fluffy? mixc(ch.shirt,[1,1,1],0.15) : (ch.jacket||ch.skin);
-  B(-0.52,-0.12+bob, armSw*0.5, 0.22,0.62,0.22, sleeve);
-  B( 0.52,-0.12+bob,-armSw*0.5, 0.22,0.62,0.22, sleeve);
-  drawGlove(B,S, -0.53,-0.50+bob, armSw*0.5, glove, -1);
-  drawGlove(B,S,  0.53,-0.50+bob,-armSw*0.5, glove,  1);
+  if(climbing){
+    // both arms up on the wall, one reaching higher than the other, alternating
+    const reach=Math.sin(walk)*0.22;
+    B(-0.46, 0.34+reach, 0.30, 0.22,0.62,0.22, sleeve);
+    B( 0.46, 0.34-reach, 0.30, 0.22,0.62,0.22, sleeve);
+    drawGlove(B,S, -0.47, 0.70+reach, 0.34, glove, -1);
+    drawGlove(B,S,  0.47, 0.70-reach, 0.34, glove,  1);
+  } else {
+    B(-0.52,-0.12+bob, armSw*0.5, 0.22,0.62,0.22, sleeve);
+    B( 0.52,-0.12+bob,-armSw*0.5, 0.22,0.62,0.22, sleeve);
+    drawGlove(B,S, -0.53,-0.50+bob, armSw*0.5, glove, -1);
+    drawGlove(B,S,  0.53,-0.50+bob,-armSw*0.5, glove,  1);
+  }
 
   /* neck + head */
   B(0,0.40+bob,0, 0.28,0.20,0.26, ch.skin);
@@ -717,6 +759,9 @@ const FRUIT={
   kiwi:      { style:'slice', rind:C(0x8a6a3a), pith:C(0xdcecac), flesh:C(0x9bd35a), core:C(0xf4f8dd), seeds:C(0x2b2b2b), fuzzy:true },
   pineapple: { style:'slice', rind:C(0xd9a12a), pith:C(0xffe89a), flesh:C(0xffd94d), core:C(0xfff3c0), crosshatch:true },
   banana:    { skin:C(0xffe04a), flesh:C(0xfff8cc), dot:C(0x9c7a1e) },
+  // candy platforms, mixed in for variety
+  lollipop:  { style:'candy_lolli', base:C(0xff4fa3), swirl:C(0xffffff), stick:C(0xffffff) },
+  gumdrop:   { style:'candy_gum',   body:C(0x7ee0e0), band:C(0xffffff),  sugar:C(0xffffff) },
 };
 
 /* A halved fruit: the dome hangs BELOW the cut plane so nothing ever pokes up
@@ -766,6 +811,25 @@ function drawSlice(s,f,r,top,t){
   if(f.fuzzy){ for(let k=0;k<18;k++){ const a=a0+k/18*6.2832;
       sph(s.x+Math.cos(a)*r*0.99, top-h*0.34, s.z+Math.sin(a)*r*0.99, r*0.055, mixc(f.rind,[1,1,1],0.25)); } }
 }
+/* a peppermint-swirl lollipop: flat candy disc + a decorative stick to one side */
+function drawLollipop(s,f,r,top,t){
+  const a0=s.ang||0;
+  cyl(s.x, s.y, s.z, r, s.h, f.base);
+  cyl(s.x, top-0.05, s.z, r*0.92, 0.10, mixc(f.base,[1,1,1],0.10));
+  for(let k=0;k<8;k++){ const a=a0+k/8*6.2832;
+    box(s.x, top+0.01, s.z, r*1.55, 0.03, r*0.15, f.swirl, a); }
+  const sx=s.x+Math.cos(a0)*r*0.95, sz=s.z+Math.sin(a0)*r*0.95;
+  cyl(sx, top-0.9, sz, 0.12, 1.7, f.stick);
+}
+/* a gumdrop: a squat candy button with a sugary sparkle top */
+function drawGumdrop(s,f,r,top,t){
+  const a0=s.ang||0;
+  cyl(s.x, s.y, s.z, r, s.h, f.body);
+  cyl(s.x, top-0.10, s.z, r*0.97, 0.10, f.band);
+  cyl(s.x, top-0.02, s.z, r*0.90, 0.10, mixc(f.body,[1,1,1],0.18));
+  for(let i=0;i<10;i++){ const a=a0+i/10*6.2832+0.3, rr=r*0.55+((i%3)*r*0.12);
+    sph(s.x+Math.cos(a)*rr, top+0.04, s.z+Math.sin(a)*rr, r*0.055, f.sugar, r*0.03); }
+}
 /* raspberry: a real berry built from packed drupelets, top cut flat */
 function drawCluster(s,f,r,top,t){
   const depth=r*0.92;
@@ -781,6 +845,8 @@ function drawFruitTop(s,t){
   const f=FRUIT[s.fruit]||FRUIT.cherry, r=s.r, top=s.y+s.h/2;
   if(f.style==='slice') drawSlice(s,f,r,top,t);
   else if(f.style==='cluster') drawCluster(s,f,r,top,t);
+  else if(f.style==='candy_lolli') drawLollipop(s,f,r,top,t);
+  else if(f.style==='candy_gum') drawGumdrop(s,f,r,top,t);
   else drawWhole(s,f,r,top,t);
 }
 
@@ -803,9 +869,18 @@ function drawBananaSeg(s,t){
 /* =========================================================================
    ENVIRONMENT — ocean, sky, clouds, birds, boat
    ========================================================================= */
-const clouds=[], birds=[];
+const clouds=[], birds=[], waves=[], fins=[];
 function initEnv(){
-  clouds.length=0; birds.length=0;
+  clouds.length=0; birds.length=0; waves.length=0; fins.length=0;
+  // white caps scattered over the sea
+  for(let i=0;i<60;i++) waves.push({ x:(Math.random()-0.5)*300, z:-40+Math.random()*320,
+    s:1.5+Math.random()*3.2, ph:Math.random()*6.2832 });
+  // shark fins patrolling close around the boat's own footprint (19 x 10 ->
+  // half-extents 9.5 x 5), not a wide circle that would swing past its bow/stern
+  // just two — a small enough number that they read as sharks patrolling,
+  // not a school of fish
+  for(let i=0;i<2;i++) fins.push({ rx:11.2+i*1.3, rz:6.6+i*0.8,
+    a:i*3.1416, sp:0.30+Math.random()*0.08, dir:i===0?1:-1 });
   // the towers climb along +Z near x=0, so keep scenery well off to the sides / high up
   for(let i=0;i<12;i++){ const side=Math.random()<0.5?-1:1;
     clouds.push({ x:side*(72+Math.random()*120), y:26+Math.random()*30,
@@ -819,6 +894,14 @@ function drawEnv(t,T){
   fogAmt(0.55);
   box(0,-2.6,40, 460,3.4,460, T.sea);
   box(0,-1.0,40, 460,0.5,460, mixc(T.sea,[1,1,1],0.10));
+  // ---- white caps: little foam dashes riding the surface ----
+  const FOAM=C(0xffffff);
+  for(const w of waves){
+    const wx=w.x+Math.sin(t*0.30+w.ph)*1.8, wz=w.z+Math.cos(t*0.22+w.ph)*1.4;
+    const bob=Math.sin(t*1.7+w.ph)*0.05;
+    box(wx, -0.66+bob, wz, w.s, 0.10, 0.34, FOAM);
+    box(wx+w.s*0.52, -0.66+bob, wz+0.46, w.s*0.46, 0.10, 0.28, mixc(FOAM,T.sea,0.30));
+  }
   fogAmt(0.9);
   // foam lapping around the boat (flat discs, largest first)
   for(let i=0;i<3;i++){ const rr=12.5-i*2.0+Math.sin(t*1.1+i)*0.35;
@@ -845,6 +928,22 @@ function drawEnv(t,T){
     box(bx-0.42,b.y+flap*0.22,bz, 0.62,0.09,0.24, col, -a, 0.5+flap);
     box(bx+0.42,b.y+flap*0.22,bz, 0.62,0.09,0.24, col, -a, -0.5-flap); }
 }
+function drawFins(t){
+  const GREY=C(0x51606e), FOAM=C(0xffffff);
+  for(const f of fins){
+    const a=f.a+t*f.sp*f.dir;
+    const x=Math.cos(a)*f.rx, z=Math.sin(a)*f.rz;
+    // heading along the ellipse's tangent, same convention as player facing
+    const hd=Math.atan2(-f.rx*Math.sin(a)*f.dir, f.rz*Math.cos(a)*f.dir);
+    const fx=Math.sin(hd), fz=Math.cos(hd), bob=Math.sin(t*2.1+f.a)*0.05;
+    cone(x, -0.26+bob, z, 0.44, 1.30, GREY, hd, 0.28);              // dorsal fin
+    cone(x-fx*1.6, -0.44+bob, z-fz*1.6, 0.28, 0.70, GREY, hd, 0.55); // tail tip
+    for(let k=1;k<=5;k++)                                            // wake
+      box(x-fx*k*0.95, -0.62, z-fz*k*0.95, 0.95-k*0.11, 0.09, 0.26,
+          mixc(FOAM, C(0x9fd8e8), k*0.16), hd);
+  }
+}
+
 function drawBoat(s,t){
   const rock=Math.sin(t*0.8)*0.020;
   const x=s.x, y=s.y, z=s.z, L=s.w, Bm=s.d, h=s.h;   // L runs along X, Bm across Z
@@ -878,6 +977,30 @@ function drawBoat(s,t){
   tor(stern+L*0.10, y+h*0.50+0.55, z-Bm*0.30, 0.55, C(0xff4d4d), 0, 1.5708);
 }
 
+/* ---- splash: droplets plus expanding surface rings ---- */
+let splashDrops=[], splashRings=[];
+function spawnSplash(x,z){
+  for(let i=0;i<32;i++){ const a=Math.random()*6.2832, sp=1.4+Math.random()*5.2;
+    splashDrops.push({x, y:-0.55, z, vx:Math.cos(a)*sp, vy:5.5+Math.random()*8,
+      vz:Math.sin(a)*sp, r:0.13+Math.random()*0.22, life:1.15}); }
+  splashRings.push({x,z,t:0});
+}
+function updateSplash(dt){
+  for(const p of splashDrops){ p.vy+=-26*0.55*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; p.life-=dt*0.85; }
+  splashDrops=splashDrops.filter(p=>p.life>0 && p.y>-1.3);
+  for(const r of splashRings) r.t+=dt;
+  splashRings=splashRings.filter(r=>r.t<1.5);
+}
+function drawSplash(){
+  if(!splashDrops.length && !splashRings.length) return;
+  emit(true); fogAmt(0.4);
+  for(const p of splashDrops) sph(p.x,p.y,p.z, p.r, C(0xffffff), p.r*1.8);
+  for(const r of splashRings){ const rr=1.1+r.t*7.5, n=20, sz=Math.max(0.05,0.34*(1-r.t/1.5));
+    for(let i=0;i<n;i++){ const a=i/n*6.2832;
+      sph(r.x+Math.cos(a)*rr, -0.56, r.z+Math.sin(a)*rr, sz, C(0xffffff), sz*1.2); } }
+  emit(false); fogAmt(0.9);
+}
+
 /* =========================================================================
    LEVELS
    ========================================================================= */
@@ -904,8 +1027,28 @@ function buildLevel(idx){
   const spawn={x:2.6,y:boat.y+boat.h/2+1.0,z:2.9};
   checks.push({x:2.6,y:boat.y+boat.h/2+0.4,z:2.9,hidden:true});
 
+  // hop() spaces platforms by the GAP between their rims, so radii can vary
+  // wildly without any jump becoming unreachable
+  let lastR=boat.d/2;
+  function hop(dx,gap,dy,r,extra){
+    cx+=dx; cy+=dy; cz+=lastR+r+gap; lastR=r;
+    const s=Object.assign({type:'disc',x:cx,y:cy,z:cz,r:r,h:1.2,fruit:nextFruit(),
+      bx:cx,by:cy,bz:cz,ang:0}, extra||{});
+    solids.push(s); return s;
+  }
+  // for a real sideways turn: pick the forward step so the true gap (the
+  // rim-to-rim distance a jump actually has to cross) equals `gap` no matter
+  // how large `dx` is, instead of stacking dx on top of a full forward gap
+  function turnHop(dx,gap,dy,r,extra){
+    const rsum=lastR+r, c2c=gap+rsum;
+    const zSep=Math.sqrt(Math.max(0.6,c2c*c2c-dx*dx));
+    cx+=dx; cy+=dy; cz+=zSep; lastR=r;
+    const s=Object.assign({type:'disc',x:cx,y:cy,z:cz,r:r,h:1.2,fruit:nextFruit(),
+      bx:cx,by:cy,bz:cz,ang:0}, extra||{});
+    solids.push(s); return s;
+  }
   function disc(dx,dz,dy,r,extra){
-    cx+=dx; cz+=dz; cy+=dy;
+    cx+=dx; cz+=dz; cy+=dy; lastR=r;
     const s=Object.assign({type:'disc',x:cx,y:cy,z:cz,r:r,h:1.2,fruit:nextFruit(),
       bx:cx,by:cy,bz:cz,ang:0}, extra||{});
     solids.push(s); return s;
@@ -927,89 +1070,134 @@ function buildLevel(idx){
         first:k===0,last:k===segs-1});
       if(k%2===0) coins.push({x:cx,y:cy+1.28,z:z,got:false,ph:Math.random()*6});
     }
-    cz=startZ+(segs-1)*segLen;
+    cz=startZ+(segs-1)*segLen; lastR=segLen/2;
     return {x:cx,y:cy,z:cz};
+  }
+  // a big square plaza — used as a hub where the route can bend, ~4x a
+  // normal platform's radius across
+  function hub(dx,gap,dy,side,extra){
+    cx+=dx; cy+=dy; const half=side/2;
+    cz+=lastR+half+gap; lastR=half;
+    const s=Object.assign({type:'box',hub:true,x:cx,y:cy,z:cz,w:side,h:1.2,d:side,
+      c:C(0xffe1b0),bx:cx,by:cy,bz:cz}, extra||{});
+    solids.push(s); return s;
+  }
+  // A chocolate-bar wall standing straight across the route. You hop at its
+  // face and hold forward: the character hauls themselves up hand over hand and
+  // steps off on top, which becomes the new route height. The face runs a long
+  // way BELOW the approach so a short hop still catches it instead of falling.
+  function climbWall(gap,rise,width){
+    const halfD=1.2;
+    cz += lastR + halfD + gap;
+    const top = cy + rise, bot = cy - 6.0;
+    const s={type:'box',wall:true,climb:true,x:cx,y:(top+bot)/2,z:cz,
+      w:width,h:top-bot,d:halfD*2,bx:cx,by:(top+bot)/2,bz:cz};
+    solids.push(s);
+    // a coin trail up the face, so it reads as "go up here"
+    for(let k=0;k<3;k++)
+      coins.push({x:cx, y:cy+0.9+k*(rise-0.6)/3, z:cz-halfD-0.9, got:false, ph:k*2});
+    cy = top; lastR = halfD;
+    return s;
   }
 
   if(idx===0){
-    /* CHERRY — gentle: big fruit steps, a mover, a spinner, fat spikes, banana run */
-    let s=disc(0, 11.6, 1.4, 3.2); coinsOn(s,3);
-    s=disc(2.2, 8.5, 1.5, 3.0);   coinsOn(s,3);
-    s=disc(-2.4, 8.5, 1.5, 3.0);  coinsOn(s,3); chk(s);
-    s=disc(-0.5, 9.0, 1.5, 2.9, {axis:'x',amp:2.6,mspd:0.8,ph:0}); coinsOn(s,2);
-    s=disc(0.5, 9.0, 1.5, 3.2);   coinsOn(s,3);
-    // fat spikes on a wide slice — walk around them (no checkpoint on a hazard platform)
-    s=disc(0, 9.0, 1.4, 3.8);
-    spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+1.1,w:3.4,d:1.7,r:1.25});
-    coins.push({x:s.x-2.1,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:1});
-    coins.push({x:s.x+2.1,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:2});
-    // spinning fruit ride
-    s=disc(0, 9.2, 1.5, 3.4, {spin:0.55}); coinsOn(s,3);
-    s=disc(0, 8.6, 1.4, 3.4); coinsOn(s,3); chk(s);
-    // banana run that falls away
-    const b=bananaBridge(0, 8.0, 1.4, 6, 3.0);
+    /* CHERRY — varied steps, a real left/right turn, a big plaza checkpoint,
+       a wall of ledges to climb, an elevator, candy platforms, a spike deck */
+    let s=hop(0, 3.0, 1.4, 3.4);  coinsOn(s,3);
+    s=hop(2.2, 2.6, 1.5, 2.4);    coinsOn(s,2);
+    s=hop(-2.4, 2.8, 1.5, 4.2);   coinsOn(s,3); chk(s);
+    s=hop(-0.5, 2.5, 1.5, 2.2, {axis:'x',amp:2.6,mspd:0.8,ph:0}); coinsOn(s,2);
+    s=hop(0.5, 2.8, 1.5, 3.6);    coinsOn(s,3);
+
+    // ---- turn right, with a small platform partway across ----
+    s=turnHop(6.0, 3.0, 1.3, 2.8); coinsOn(s,2);
+    s=turnHop(3.2, 2.6, 1.2, 1.5); coinsOn(s,1);      // small platform
+    // ---- turn back left, heading up into the plaza ----
+    s=turnHop(-5.4, 2.8, 1.4, 2.6); coinsOn(s,2);
+
+    // ---- big square plaza: a checkpoint hub, ~4x a normal platform across ----
+    const hb=hub(0, 3.0, 1.6, 12.8); chk(hb); coinsOn(hb,4);
+
+    // ---- turn right again, off the plaza ----
+    s=turnHop(6.5, 3.0, 1.3, 2.6); coinsOn(s,2);
+
+    // ---- a chocolate-bar wall you climb by holding forward ----
+    s=climbWall(2.2, 5.5, 9.0);
+
+    s=hop(-1.6, 2.6, 1.3, 3.0); s.fruit='gumdrop'; coinsOn(s,2);
+    // ---- elevator: a slow, tall up/down platform ----
+    s=hop(0, 2.8, 1.4, 2.4, {axis:'y',amp:3.2,mspd:0.5,ph:0}); coinsOn(s,2);
+    s=hop(0, 2.8, 1.4, 3.0); s.fruit='lollipop'; coinsOn(s,2); chk(s);
+
+    // the spike deck is deliberately far bigger, so there's room to walk around
+    s=hop(0, 3.0, 1.4, 6.6);
+    spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+2.0,w:6.2,d:2.2,r:1.25});
+    coins.push({x:s.x-3.6,y:s.y+s.h/2+0.78,z:s.z-2.2,got:false,ph:1});
+    coins.push({x:s.x+3.6,y:s.y+s.h/2+0.78,z:s.z-2.2,got:false,ph:2});
+    coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z-3.4,got:false,ph:3});
+    s=hop(0, 3.0, 1.5, 2.7, {spin:0.55}); coinsOn(s,2);
+    s=hop(0, 2.8, 1.4, 4.6); coinsOn(s,3); chk(s);
+    const b=bananaBridge(0, 3.0, 1.4, 6, 3.0);
     cz=b.z;
-    s=disc(0, 8.0, 1.4, 3.2); coinsOn(s,3); chk(s);
-    s=disc(1.8, 8.6, 1.5, 3.0); coinsOn(s,2);
-    const g=disc(-1.8, 8.8, 1.5, 4.2);
-    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.2};
+    s=hop(0, 2.8, 1.4, 2.5); coinsOn(s,2); chk(s);
+    s=hop(1.8, 2.6, 1.5, 3.9); coinsOn(s,3);
+    const g=hop(-1.8, 2.8, 1.5, 5.0);
+    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.4};
   }
 
   if(idx===1){
-    /* STRAWBERRY — trampoline over a wall, fan lift, spinner, mover, spikes */
-    let s=disc(0, 11.5, 1.4, 3.2); coinsOn(s,3);
-    s=disc(1.8, 8.6, 1.2, 3.0);   coinsOn(s,3);
-    // trampoline (its own landing surface) then a wall to clear
-    const tr=disc(-1.8, 8.8, 0.6, 3.0, {tramp:true}); tr.fruit='watermelon';
+    /* STRAWBERRY — trampoline over a wall, fan lift, spinner, mover, big spike deck */
+    let s=hop(0, 3.0, 1.4, 3.2);  coinsOn(s,3);
+    s=hop(1.8, 2.6, 1.2, 2.4);    coinsOn(s,2);
+    const tr=hop(-1.8, 2.8, 0.6, 3.4, {tramp:true}); tr.fruit='watermelon';
     solids.push({type:'box',x:tr.x,y:tr.y+3.6,z:tr.z+4.0,w:8,h:5,d:1.0,
       c:C(0x8f5a2a),bx:tr.x,by:tr.y+3.6,bz:tr.z+4.0,wall:true});
     coinLine(tr.x, tr.y+6.2, tr.z+2.0, 3, 1.2);
-    cz=tr.z+4.0;
-    s=disc(0, 7.4, 3.4, 3.4);     coinsOn(s,3); chk(s);
-    // fan lift
-    s=disc(1.4, 8.6, 0.4, 3.2);
+    cz=tr.z+4.0; lastR=0.5;
+    s=hop(0, 2.6, 3.4, 3.8);      coinsOn(s,3); chk(s);
+    s=hop(1.4, 2.6, 0.4, 3.0);
     fans.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z,r:2.3,power:36,dir:1,height:9});
     coinLine(s.x, s.y+3.4, s.z, 3, 1.4);
-    s=disc(0, 8.4, 4.6, 3.2);     coinsOn(s,3); chk(s);
-    s=disc(-1.6, 8.8, 1.4, 3.2, {spin:0.8}); coinsOn(s,3);
-    s=disc(1.0, 8.8, 1.5, 3.0, {axis:'y',amp:1.5,mspd:1.1,ph:0}); coinsOn(s,2);
-    s=disc(0, 8.8, 1.5, 3.9);
-    spikes.push({x:s.x-1.9,y:s.y+s.h/2+0.9,z:s.z,w:1.7,d:3.0,r:1.20});
-    spikes.push({x:s.x+1.9,y:s.y+s.h/2+0.9,z:s.z,w:1.7,d:3.0,r:1.20});
+    s=hop(0, 2.4, 4.6, 2.6);      coinsOn(s,2); chk(s);
+    s=hop(-1.6, 2.8, 1.4, 3.4, {spin:0.8}); coinsOn(s,3);
+    s=hop(1.0, 2.6, 1.5, 2.2, {axis:'y',amp:1.5,mspd:1.1,ph:0}); coinsOn(s,2);
+    s=hop(0, 3.0, 1.5, 6.2);
+    spikes.push({x:s.x-2.6,y:s.y+s.h/2+0.9,z:s.z,w:2.2,d:4.4,r:1.20});
+    spikes.push({x:s.x+2.6,y:s.y+s.h/2+0.9,z:s.z,w:2.2,d:4.4,r:1.20});
     coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:3});
-    const b=bananaBridge(0, 8.0, 1.4, 5, 3.0); cz=b.z;
-    s=disc(0, 8.0, 1.4, 3.2); coinsOn(s,3); chk(s);
-    const g=disc(0, 8.6, 1.5, 4.2);
-    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.2};
+    coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z-2.6,got:false,ph:4});
+    const b=bananaBridge(0, 3.0, 1.4, 5, 3.0); cz=b.z;
+    s=hop(0, 2.8, 1.4, 2.8); coinsOn(s,2); chk(s);
+    const g=hop(0, 2.8, 1.5, 4.8);
+    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.4};
   }
 
   if(idx===2){
-    /* BLUEBERRY — balloon swing, down-fan, spinner, mover, long banana finish */
-    let s=disc(0, 11.5, 1.4, 3.2); coinsOn(s,3);
-    s=disc(-2.0, 8.6, 1.4, 3.0);  coinsOn(s,3); chk(s);
-    // balloon swing across a big gap
-    s=disc(2.0, 8.6, 1.2, 3.0);   coinsOn(s,2);
+    /* BLUEBERRY — balloon swing, down-fan, spinner, mover, biggest spike deck */
+    let s=hop(0, 3.0, 1.4, 3.4);  coinsOn(s,3);
+    s=hop(-2.0, 2.6, 1.4, 2.4);   coinsOn(s,2); chk(s);
+    s=hop(2.0, 2.6, 1.2, 3.0);    coinsOn(s,2);
     const az=s.z+7.0, ay=s.y+8.0;
     swings.push({ax:s.x,ay:ay,az:az,len:5.4,dirx:0,dirz:1,ang:-0.55,angVel:0,
       cols:[C(0xff4d6d),C(0xffd34d),C(0x4dc3ff),C(0x9a7bff),C(0x57d36a)]});
     coinLine(s.x, s.y+2.2, s.z+5.0, 3, 1.6);
-    cz=s.z+13.5; cy=s.y+1.0;
-    s=disc(0, 0, 0, 3.6); coinsOn(s,3); chk(s);
-    // down-fan you must dodge around
-    s=disc(1.6, 8.8, 0.6, 3.6);
+    cz=s.z+13.5; cy=s.y+1.0; lastR=0;
+    s=disc(0, 0, 0, 4.0); coinsOn(s,3); chk(s);
+    s=hop(1.6, 2.6, 0.6, 3.2);
     fans.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z,r:2.1,power:28,dir:-1,height:8});
     coins.push({x:s.x-2.2,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:1});
     coins.push({x:s.x+2.2,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:2});
-    s=disc(-1.6, 8.8, 1.4, 3.2, {spin:1.0}); coinsOn(s,3);
-    s=disc(1.2, 8.8, 1.5, 3.0, {axis:'y',amp:1.7,mspd:1.2,ph:0}); coinsOn(s,2);
-    s=disc(0, 8.8, 1.5, 4.0);
-    spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+1.2,w:3.6,d:1.7,r:1.30});
-    coins.push({x:s.x-2.2,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:4});
-    coins.push({x:s.x+2.2,y:s.y+s.h/2+0.78,z:s.z-1.4,got:false,ph:5});
-    const b=bananaBridge(0, 8.0, 1.4, 7, 3.0); cz=b.z;
-    s=disc(0, 8.2, 1.4, 3.2); coinsOn(s,3); chk(s);
-    const g=disc(0, 8.6, 1.5, 4.4);
-    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.4};
+    s=hop(-1.6, 2.8, 1.4, 2.6, {spin:1.0}); coinsOn(s,2);
+    s=hop(1.2, 2.6, 1.5, 2.2, {axis:'y',amp:1.7,mspd:1.2,ph:0}); coinsOn(s,2);
+    s=hop(0, 3.0, 1.5, 6.8);
+    spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+2.2,w:6.4,d:2.2,r:1.30});
+    coins.push({x:s.x-3.8,y:s.y+s.h/2+0.78,z:s.z-2.4,got:false,ph:4});
+    coins.push({x:s.x+3.8,y:s.y+s.h/2+0.78,z:s.z-2.4,got:false,ph:5});
+    coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z-3.6,got:false,ph:6});
+    const b=bananaBridge(0, 3.0, 1.4, 7, 3.0); cz=b.z;
+    s=hop(0, 2.8, 1.4, 3.0); coinsOn(s,3); chk(s);
+    const g=hop(0, 2.8, 1.5, 5.2);
+    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.6};
   }
 
   return { theme:T, solids, spikes, fans, swings, checks, coins, goal, spawn, boat };
@@ -1021,13 +1209,15 @@ function buildLevel(idx){
 let state='intro';
 let world=null, levelIdx=0;
 const player={ x:0,y:2,z:0, vx:0,vy:0,vz:0, r:0.42, hh:0.9, onGround:false, facing:0, walk:0,
-  standingOn:null, respawn:{x:0,y:2,z:0}, dead:false, deadT:0, swing:null, swingCd:0 };
+  standingOn:null, respawn:{x:0,y:2,z:0}, dead:false, deadT:0, swing:null, swingCd:0,
+  climbing:false, climbHint:false };
 let lives=3, coinsLevel=0, coinsForLife=0, runTime=0, running=false;
-const GRAV=-26, JUMP=11, MOVE=7, TRAMP=21, AIR=0.72;
+const GRAV=-26, JUMP=11, MOVE=7, TRAMP=21, AIR=0.72, CLIMB=6;
 const cam={ yaw:Math.PI, pitch:0.42, dist:10 };
 
 function resetPlayerTo(p){ player.x=p.x; player.y=p.y; player.z=p.z; player.vx=player.vy=player.vz=0;
-  player.onGround=false; player.dead=false; player.swing=null; player.standingOn=null; player.swingCd=0; }
+  player.onGround=false; player.dead=false; player.swing=null; player.standingOn=null; player.swingCd=0;
+  player.climbing=false; }
 
 function resetHazards(){
   // banana segments grow back, so a fall never makes the level impossible
@@ -1040,7 +1230,7 @@ function startLevel(idx){
   Audio_.setTheme(idx);
   player.respawn={x:world.spawn.x,y:world.spawn.y,z:world.spawn.z};
   resetPlayerTo(world.spawn);
-  coinsLevel=0; running=true;
+  coinsLevel=0; running=true; player.climbHint=false;   // re-teach the climb each tower
   const T=world.theme; gl.clearColor(T.sky[0],T.sky[1],T.sky[2],1); gl.uniform3fv(loc.uFog,T.fog);
   document.getElementById('coinPill').firstChild.textContent = T.coin+' ';
   updateHUD();
@@ -1079,7 +1269,8 @@ function onDisc(px,pz,s){ const dx=px-s.x,dz=pz-s.z; return dx*dx+dz*dz < (s.r+p
 
 function die(kind){
   if(player.dead) return;
-  player.dead=true; player.deadT=0;
+  player.dead=true; player.deadT=0; player.deadKind=kind;
+  if(kind==='water') spawnSplash(player.x, player.z);
   Audio_.sfx(kind==='water'?'splash':'die');
   if(!opts.cheat){ lives--; updateHUD(); }
   if(!opts.cheat && lives<=0){ running=false; setTimeout(()=>gameOver(),700); }
@@ -1123,21 +1314,47 @@ function physics(dt,t,inx,inz){
   player.vy += GRAV*dt; if(player.vy<-42) player.vy=-42;
   player.onGround=false; player.standingOn=null;
 
-  // X / Z walls (boxes)
+  // X / Z walls (boxes) — a climbable one also records the grip for the climb below
+  let grip=null, gripAx='';
   player.x+=player.vx*dt;
   for(const s of world.solids){ if(s.type!=='box'||s.dead) continue;
     if(aabbH(player.x,player.y,player.z,s)){
-      if(player.vx>0) player.x=s.x-s.w/2-player.r; else if(player.vx<0) player.x=s.x+s.w/2+player.r; player.vx=0; } }
+      if(player.vx>0) player.x=s.x-s.w/2-player.r; else if(player.vx<0) player.x=s.x+s.w/2+player.r; player.vx=0;
+      if(s.climb){ grip=s; gripAx='x'; } } }
   player.z+=player.vz*dt;
   for(const s of world.solids){ if(s.type!=='box'||s.dead) continue;
     if(aabbH(player.x,player.y,player.z,s)){
-      if(player.vz>0) player.z=s.z-s.d/2-player.r; else if(player.vz<0) player.z=s.z+s.d/2+player.r; player.vz=0; } }
+      if(player.vz>0) player.z=s.z-s.d/2-player.r; else if(player.vz<0) player.z=s.z+s.d/2+player.r; player.vz=0;
+      if(s.climb){ grip=s; gripAx='z'; } } }
   // round platforms: push out radially when we're beside (not on top of) them
   for(const s of world.solids){ if(s.type!=='disc'||s.dead) continue;
     const dx=player.x-s.x, dz=player.z-s.z, dd=Math.hypot(dx,dz)||1, minD=s.r+player.r;
     if(dd<minD && (player.y+player.hh)>(s.y-s.h/2)+0.06 && (player.y-player.hh)<(s.y+s.h/2)-0.06){
       player.x=s.x+dx/dd*minD; player.z=s.z+dz/dd*minD;
       player.vx*=0.2; player.vz*=0.2; } }
+
+  // ---- wall climbing: keep holding the stick into the face and you haul up it ----
+  player.climbing=false;
+  if(grip){
+    // which way is "into the wall" depends on the face we're pressed against
+    const side = gripAx==='x' ? Math.sign(player.x-grip.x) : Math.sign(player.z-grip.z);
+    const into = gripAx==='x' ? -side*inx : -side*inz;
+    const top = grip.y+grip.h/2;
+    if(!player.climbHint){ player.climbHint=true; showMsg('Hold forward to climb! 🧗',1800); }
+    if(into>0.3 && (player.y-player.hh) < top){
+      player.climbing=true;
+      player.vy=CLIMB;                       // steady haul; gravity ignored while gripping
+      player.walk+=CLIMB*dt*1.7;             // hand over hand
+      // face the wall, so the reaching arms land against it
+      player.facing = gripAx==='x' ? Math.atan2(-side,0) : Math.atan2(0,-side);
+      // hauled over the lip — step in onto the top of the wall
+      if((player.y-player.hh)+player.vy*dt > top-0.10){
+        if(gripAx==='x') player.x = grip.x + side*(grip.w/2-0.7);
+        else             player.z = grip.z + side*(grip.d/2-0.7);
+        player.y = top+player.hh-0.05; player.vy=0; player.climbing=false;
+      }
+    }
+  }
 
   // Y — land / bonk
   player.y+=player.vy*dt;
@@ -1161,7 +1378,7 @@ function postPhysics(t){
   if(sp>0.6){ player.facing=Math.atan2(player.vx,player.vz); player.walk+=sp*0.055; }
 
   for(const k of world.spikes){ if(Math.abs(player.x-k.x)<k.w/2+player.r-0.05 &&
-      Math.abs(player.z-k.z)<k.d/2+player.r-0.05 && Math.abs(player.y-k.y)<1.8){ die(); return; } }
+      Math.abs(player.z-k.z)<k.d/2+player.r-0.05 && Math.abs(player.y-k.y)<1.0){ die(); return; } }
 
   if(!player.swing && player.swingCd<=0 && player.vy<7){
     for(const sw of world.swings){ const h=swingHandle(sw);
@@ -1170,9 +1387,8 @@ function postPhysics(t){
         showMsg('Hold on! Tap JUMP to let go 🎈',1500); break; } }
   }
 
-  // fall into the sea (or well below the last checkpoint)
-  const limit=Math.max(-1.6, player.respawn.y-11);
-  if(player.y<limit) die(player.y<-1.0?'water':'fall');
+  // let them fall all the way to the sea — the splash is the payoff
+  if(player.y < -1.0) die('water');
 
   for(const c of world.coins){ if(c.got) continue;
     if(Math.abs(player.x-c.x)<1.2 && Math.abs(player.z-c.z)<1.2 && Math.abs(player.y-c.y)<1.6){
@@ -1220,9 +1436,23 @@ function levelComplete(){
   document.getElementById('levelTitle').innerHTML=T.emoji+' '+T.name+' Done!';
   document.getElementById('levelStats').innerHTML='Time so far: <b>'+fmtTime(runTime)+'</b> &nbsp;·&nbsp; '+T.coin+' '+coinsLevel+' collected<br>Next up: '+nx.emoji+' <b>'+nx.name+' Tower</b>';
 }
+let pendingTime=null, savedThisWin=false;
 function winGame(){ running=false; setState('win'); Audio_.sfx('win'); Audio_.stopMusic();
-  const name=CHARACTERS[chosen].name; saveScore(name, runTime);
-  document.getElementById('winStats').innerHTML='You climbed all three towers in <b>'+fmtTime(runTime)+'</b>!<br>Great job, '+name+'! 🍒🍓🫐'; }
+  pendingTime=runTime; savedThisWin=false;
+  const inp=document.getElementById('nameInput'), btn=document.getElementById('nameSave');
+  let last=''; try{ last=localStorage.getItem('ft_lastName')||''; }catch(e){}
+  inp.value=last||CHARACTERS[chosen].name; inp.disabled=false;
+  btn.disabled=false; btn.textContent='Save';
+  document.getElementById('nameLabel').textContent='Put your name on the leaderboard!';
+  document.getElementById('winStats').innerHTML='You climbed all three towers in <b>'+fmtTime(runTime)+'</b>! 🍒🍓🫐'; }
+function saveWinName(){
+  if(savedThisWin || pendingTime==null) return;
+  const inp=document.getElementById('nameInput'), btn=document.getElementById('nameSave');
+  const nm=((inp.value||'').trim().slice(0,12)) || CHARACTERS[chosen].name;
+  saveScore(nm, pendingTime); savedThisWin=true;
+  try{ localStorage.setItem('ft_lastName', nm); }catch(e){}
+  inp.disabled=true; btn.disabled=true; btn.textContent='Saved ✓';
+  document.getElementById('nameLabel').textContent='Nice one, '+nm+' — you\u2019re on the board! 🏆'; }
 function gameOver(){ setState('over'); Audio_.stopMusic(); }
 function nextLevel(){ setState('play'); startLevel(levelIdx+1); if(opts.music) Audio_.startMusic(); }
 
@@ -1241,6 +1471,8 @@ function render(t){
   gl.uniformMatrix4fv(loc.uView,false,M.lookAt(eye,[player.x,player.y+0.7,player.z],[0,1,0]));
 
   drawEnv(t,T);
+  drawFins(t);
+  drawSplash();
 
   /* ---- solids ---- */
   for(const s of world.solids){
@@ -1258,17 +1490,15 @@ function render(t){
     box(s.x,s.y,s.z,s.w,s.h,s.d, s.c||C(0xb4762f));
   }
 
-  /* ---- chunky spikes (sea-urchin thorns) ---- */
+  /* ---- spikes: single faceted pyramid each, in a tight cluster of 4 ---- */
   for(const k of world.spikes){
-    const nx=Math.max(1,Math.round(k.w/2.7)), nz=Math.max(1,Math.round(k.d/2.7));
-    for(let ix=0;ix<nx;ix++) for(let iz=0;iz<nz;iz++){
-      const px=k.x-k.w/2+(ix+0.5)*k.w/nx, pz=k.z-k.d/2+(iz+0.5)*k.d/nz;
-      const r=k.r||1.2;
-      cyl(px,k.y-0.78,pz, r*1.20, 0.44, C(0x6b7684));        // chunky base plate
+    // always a 2x2 cluster, sized to fit inside the platform's danger zone
+    const cw=Math.min(k.w,k.d)*0.42, r=(k.r||1.2)*0.5;
+    for(const ix of [-1,1]) for(const iz of [-1,1]){
+      const px=k.x+ix*cw*0.5, pz=k.z+iz*cw*0.5;
+      cyl(px,k.y-0.78,pz, r*1.20, 0.44, C(0x6b7684));        // base plate
       cyl(px,k.y-0.54,pz, r*1.05, 0.22, C(0xff4d5e));        // red warning band
-      cone(px,k.y+0.35,pz, r, 2.30, C(0xf2f5fb));            // big fat thorn
-      cone(px,k.y+1.05,pz, r*0.62, 1.05, C(0xffffff));       // bright tip
-      sph(px,k.y+1.62,pz, r*0.20, C(0xff3b4e));              // danger dot
+      pyramid(px,k.y+0.18,pz, r*1.30, 1.15, C(0xf2f5fb), 0.7854); // one sharp faceted thorn (half height too)
     }
   }
 
@@ -1316,9 +1546,9 @@ function render(t){
   }
 
   /* ---- player ---- */
-  if(!(player.dead && Math.floor(player.deadT*10)%2===0))
+  if(!(player.dead && (player.deadKind==='water' || Math.floor(player.deadT*10)%2===0)))
     drawChar(CHARACTERS[chosen], player.x, player.y, player.z, player.facing, player.walk,
-             !player.onGround || !!player.swing, t);
+             !player.onGround || !!player.swing, t, player.climbing);
 }
 
 function drawTrampoline(s,t){
@@ -1479,8 +1709,10 @@ click('resumeBtn',()=>togglePause());
 click('restartBtn',()=>{ setState('play'); startLevel(levelIdx); running=true; if(opts.music)Audio_.startMusic(); });
 click('pMenuBtn',()=>{ setState('menu'); Audio_.stopMusic(); running=false; });
 click('levelNext',()=>nextLevel());
-click('winAgain',()=>startRun());
-click('winMenu',()=>setState('menu'));
+click('nameSave',()=>saveWinName());
+document.getElementById('nameInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); saveWinName(); } });
+click('winAgain',()=>{ saveWinName(); startRun(); });      // never lose a time
+click('winMenu',()=>{ saveWinName(); setState('menu'); });
 click('overRetry',()=>{ lives=3; setState('play'); startLevel(levelIdx); running=true; if(opts.music)Audio_.startMusic(); });
 click('overMenu',()=>setState('menu'));
 document.getElementById('pauseBtn').addEventListener('click',()=>{ Audio_.sfx('click'); togglePause(); });
@@ -1518,8 +1750,11 @@ function frame(now){
   let dt=(now-last)/1000; last=now; if(dt>0.05) dt=0.05; const t=now/1000;
   if(state==='play' && running && world){
     updateDynamics(dt,t);
+    updateSplash(dt);
     for(const s of world.solids) if(s.squash!==undefined && s.squash>0){ s.squash+=dt; if(s.squash>0.3) s.squash=0; }
-    if(player.dead){ player.deadT+=dt; if(player.deadT>0.7 && (opts.cheat||lives>0)) respawn(); }
+    if(player.dead){ player.deadT+=dt;
+      const wait=(player.deadKind==='water')?1.15:0.7;
+      if(player.deadT>wait && (opts.cheat||lives>0)) respawn(); }
     else{
       runTime+=dt;
       if(player.swingCd>0) player.swingCd-=dt;
