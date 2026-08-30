@@ -38,13 +38,19 @@
   /* ============ HUD ============ */
   #hud{ position:fixed; inset:0; pointer-events:none; z-index:10; display:none; }
   #topbar{ position:absolute; top:0; left:0; right:0; height:62px; display:flex; align-items:center;
-    justify-content:space-between; padding:9px 14px; }
+    justify-content:space-between;
+    padding:9px calc(14px + env(safe-area-inset-right)) 9px calc(14px + env(safe-area-inset-left)); }
   .hudpill{ background:linear-gradient(var(--slab),var(--slab2)); color:#fff; padding:7px 15px;
     border:3px solid var(--ink); border-radius:14px; box-shadow:0 3px 0 rgba(0,0,0,.35);
     font-weight:900; font-size:17px; letter-spacing:.4px; text-shadow:0 2px 0 rgba(0,0,0,.45);
     display:flex; align-items:center; gap:6px; }
   #lives{ font-size:22px; letter-spacing:2px; }
-  #timer{ font-variant-numeric:tabular-nums; }
+  /* just the time: no slab behind it, so it stays out of the way of the climb.
+     The keyline is what keeps it readable against sky, sea or fruit. */
+  #timer{ font-variant-numeric:tabular-nums; color:#fff; font-weight:900;
+    font-size:clamp(15px,3.2vw,19px); letter-spacing:.6px; opacity:.92;
+    text-shadow:-2px 0 rgba(0,0,0,.55), 2px 0 rgba(0,0,0,.55), 0 -2px rgba(0,0,0,.55),
+      0 2px rgba(0,0,0,.55), 0 2px 5px rgba(0,0,0,.5); }
   #pauseBtn{ pointer-events:auto; background:linear-gradient(var(--slab),var(--slab2)); color:#fff;
     border:3px solid var(--ink); width:44px; height:44px; border-radius:50%; font-size:17px;
     box-shadow:0 3px 0 rgba(0,0,0,.35); }
@@ -67,8 +73,10 @@
     border:3px solid rgba(255,255,255,.55); box-shadow:0 4px 14px rgba(0,0,0,.35); line-height:1.05;
     text-align:center; transition:transform .05s; text-transform:uppercase; }
   .actbtn:active{ transform:scale(.92); }
-  #jumpBtn{ right:32px; bottom:40px; width:120px; height:120px; font-size:22px; background:rgba(90,200,120,.6); }
-  #lookBtn{ right:150px; bottom:120px; width:82px; height:82px; font-size:14px; background:rgba(120,170,255,.5); }
+  #jumpBtn{ right:calc(32px + env(safe-area-inset-right)); bottom:40px; width:120px; height:120px;
+    font-size:22px; background:rgba(90,200,120,.6); }
+  #lookBtn{ right:calc(166px + env(safe-area-inset-right)); bottom:120px; width:82px; height:82px;
+    font-size:14px; background:rgba(120,170,255,.5); }
 
   /* ============ Screens ============ */
   .screen{ position:fixed; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center;
@@ -86,7 +94,10 @@
 
   /* ---- the shared bar every sub-screen wears ---- */
   .topbar2{ position:absolute; top:0; left:0; right:0; height:64px; display:flex; align-items:flex-start;
-    justify-content:space-between; pointer-events:none; z-index:6; }
+    justify-content:space-between; pointer-events:none; z-index:6;
+    /* the slabs deliberately bleed off the edges, so start them at the safe edge
+       or the back chevron ends up under a notch in landscape */
+    padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
   .tbSlab{ pointer-events:auto; cursor:pointer; border:none; height:56px; min-width:118px;
     background:linear-gradient(var(--slab) 0%, var(--slab2) 60%, var(--slabE) 100%);
     box-shadow:0 4px 0 rgba(0,0,0,.4); transform:skewX(-13deg);
@@ -110,7 +121,7 @@
     /* safe centring: when the content is taller than the screen this falls back
        to aligning at the top, so nothing is ever clipped off above the fold */
     justify-content:safe center;
-    padding:74px 20px 22px; }
+    padding:74px calc(20px + env(safe-area-inset-right)) 22px calc(20px + env(safe-area-inset-left)); }
   .sbody > *{ flex-shrink:0; }
   .sbody.top{ justify-content:flex-start; }
 
@@ -118,7 +129,7 @@
      screen, and drops a soft shadow so it lifts off the blue. */
   .gamelogo{ display:block; width:min(660px,86vw); height:auto;
     max-height:min(27vh,178px); margin:0 auto;
-    filter:drop-shadow(0 10px 14px rgba(0,0,0,.35)); }
+    filter:drop-shadow(0 7px 0 rgba(0,0,0,.22)) drop-shadow(0 10px 16px rgba(0,0,0,.32)); }
   #introTitle .gamelogo{ max-height:min(38vh,240px); width:min(720px,90vw); }
   h1.logo{ font-size:clamp(38px,9.4vw,80px); font-weight:900; line-height:1; text-transform:uppercase;
     background:linear-gradient(#fff6b0,#ffd451 46%,#ff9c2e);
@@ -244,12 +255,15 @@
   .profTimes .stat{ flex:1; }
 
   /* ---- the profile chip on the main menu ---- */
-  #menuProf{ display:flex; align-items:center; gap:9px; margin:4px 0 14px; }
+  /* every row in the menu column is the same width, so the edges line up */
+  #mainMenu .btn{ width:var(--menuw); min-width:0; }
+  #menuProf{ display:flex; align-items:center; gap:9px; margin:4px 0 14px; width:var(--menuw); }
+  #mainMenu{ --menuw:min(330px,78vw); }
   #menuProfPick{ pointer-events:auto; cursor:pointer; -webkit-appearance:none; appearance:none;
     font:inherit; font-weight:900; font-size:clamp(15px,3.4vw,19px); text-transform:uppercase;
     letter-spacing:.6px; color:#fff; text-align:center; text-align-last:center;
     padding:12px 30px; border:3px solid var(--ink); border-radius:13px;
-    width:min(300px,64vw); text-shadow:0 2px 0 rgba(0,0,0,.4);
+    flex:1; min-width:0; text-shadow:0 2px 0 rgba(0,0,0,.4);
     background-color:var(--slab2);
     background-image:
       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M3 6l5 6 5-6z' fill='rgba(255,255,255,.85)'/%3E%3C/svg%3E"),
@@ -351,6 +365,14 @@
     letter-spacing:.6px; opacity:.92; margin-bottom:8px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
   .nameFields{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; }
 
+  /* a middling screen still has to fit: trim the mark and the gaps before the
+     credit line runs off the bottom */
+  @media (max-height: 790px){
+    .gamelogo{ max-height:min(23vh,150px); }
+    .tag{ margin:10px 0 14px; }
+    .btn{ padding:11px 24px; margin:5px; }
+    #menuProf{ margin:2px 0 10px; }
+  }
   /* a very short landscape screen: the buttons matter more than the blurb */
   @media (max-height: 430px){
     .gamelogo{ max-height:80px; width:min(420px,66vw); }
@@ -387,7 +409,7 @@
   <div id="topbar">
     <div class="hudpill" id="coinPill">🍒 <span id="coinCount">0</span></div>
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="hudpill" id="timer">0:00.0</div>
+      <div id="timer">0:00.0</div>
       <button id="pauseBtn">⏸</button>
     </div>
     <div class="hudpill" id="lives">❤❤❤</div>
@@ -443,7 +465,6 @@
     <!-- the wordmark: a soft drop shadow, a dark keyline, a cream rim, a gold face -->
     <g text-anchor="middle" font-family="'Baloo 2',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"
        font-weight="900" font-size="92" letter-spacing="1">
-      <text x="420" y="122" fill="#06203c" opacity=".4" transform="translate(0 10)">FRUIT TOWER</text>
       <text x="420" y="112" fill="#0b2b4d" stroke="#0b2b4d" stroke-width="24" stroke-linejoin="round"
             paint-order="stroke">FRUIT TOWER</text>
       <text x="420" y="112" fill="url(#lgGold-i)" stroke="#fff6d8" stroke-width="6" stroke-linejoin="round"
@@ -509,7 +530,6 @@
       <!-- the wordmark: a soft drop shadow, a dark keyline, a cream rim, a gold face -->
       <g text-anchor="middle" font-family="'Baloo 2',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"
          font-weight="900" font-size="92" letter-spacing="1">
-        <text x="420" y="122" fill="#06203c" opacity=".4" transform="translate(0 10)">FRUIT TOWER</text>
         <text x="420" y="112" fill="#0b2b4d" stroke="#0b2b4d" stroke-width="24" stroke-linejoin="round"
               paint-order="stroke">FRUIT TOWER</text>
         <text x="420" y="112" fill="url(#lgGold)" stroke="#fff6d8" stroke-width="6" stroke-linejoin="round"
