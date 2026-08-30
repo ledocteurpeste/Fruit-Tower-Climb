@@ -2049,7 +2049,10 @@ function buildLevel(idx){
   solids.push({type:'box',nodraw:true,x:-3.8,y:dTop+0.85,z:-2.4,w:7.6,h:1.7,d:4.2,bx:-3.8,by:dTop+0.85,bz:-2.4});
   solids.push({type:'box',nodraw:true,x:-3.8,y:dTop+1.95,z:-2.4,w:6.1,h:0.36,d:3.4,bx:-3.8,by:dTop+1.95,bz:-2.4});
   const spawn={x:2.6,y:boat.y+boat.h/2+1.0,z:2.9};
-  checks.push({x:2.6,y:boat.y+boat.h/2+0.4,z:2.9,hidden:true});
+  // The start point only exists to seed the respawn; it is never drawn and is
+  // marked as already reached, or you spawn standing on it and the game
+  // announces "Checkpoint!" before you have taken a step.
+  checks.push({x:2.6,y:boat.y+boat.h/2+0.4,z:2.9,hidden:true,hit:true});
 
   // hop() spaces platforms by the GAP between their rims, so radii can vary
   // wildly without any jump becoming unreachable
@@ -2882,9 +2885,29 @@ function drawSwing(sw,t){
 
 /* character-select stage: model sits in the clear middle band */
 let csAng=0;
+// The strip of canvas between the climber's name and the buttons. The preview
+// is drawn only into it: across the whole canvas the climber's head ended up
+// behind their own name on anything but a wide, short screen.
+function charBand(){
+  const dpr=canvas.width/Math.max(1,innerWidth);
+  const topEl=document.getElementById('charTop'), botEl=document.getElementById('charBot');
+  if(topEl && botEl){
+    const top=topEl.getBoundingClientRect().bottom, bot=botEl.getBoundingClientRect().top;
+    if(bot-top>60) return { vy:Math.round((innerHeight-bot)*dpr), vh:Math.round((bot-top)*dpr) };
+  }
+  return { vy:0, vh:canvas.height };
+}
 function renderCharSelect(t){
   gl.clearColor(0.09,0.45,0.78,1); gl.uniform3fv(loc.uFog,C(0x2a9bf0));   // same blue as the menus
-  gl.uniformMatrix4fv(loc.uView,false,M.lookAt([0,0.65,6.4],[0,-0.25,0],[0,1,0]));
+  const {vy,vh}=charBand();
+  gl.viewport(0,vy,canvas.width,vh);
+  gl.uniformMatrix4fv(loc.uProj,false,M.perspective(1.05, canvas.width/vh, 0.1, 600));
+  // Sit close enough that the climber fills the band, pulling back only when the
+  // band is narrow enough that the pedestal would otherwise run off the sides.
+  const asp=canvas.width/vh;
+  const dist=Math.max(5.0, 5.6/Math.max(0.5, asp));
+  // framed a little low so the pedestal's base is inside the band too
+  gl.uniformMatrix4fv(loc.uView,false,M.lookAt([0,0.45,dist],[0,-0.5,0],[0,1,0]));
   csAng+=0.012;
   // a fruit-slice pedestal
   cyl(0,-1.95,0, 2.2, 0.55, C(0x2b6f8f));
@@ -2892,6 +2915,7 @@ function renderCharSelect(t){
   for(let i=0;i<10;i++){ const a=i/10*6.2832+csAng*0.4;
     sph(Math.cos(a)*2.0,-1.68,Math.sin(a)*2.0, 0.20, C(0x66c6e8)); }
   drawChar(CHARACTERS[chosen], 0,-0.28,0, csAng*1.6, t*3.0, false, t, false, false, previewLook());
+  gl.viewport(0,0,canvas.width,canvas.height);          // hand the full canvas back
 }
 
 /* =========================================================================
