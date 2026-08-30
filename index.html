@@ -8,27 +8,52 @@
 <meta name="theme-color" content="#5ec8f2" />
 <title>Fruit Tower</title>
 <style>
+  /* =========================================================================
+     Skin: chunky arcade UI in the style of a mobile battler — a bright blue
+     ground with a tiled fruit watermark, dark slate slabs, and buttons with a
+     hard outline, a light top half and a thick bottom edge. Every sub-screen
+     wears the same bar: a back chevron on the left, the title in the middle
+     and a home button on the right.
+     ========================================================================= */
+  :root{
+    --sky:#2a9bf0; --sky2:#1573c8; --skyDeep:#0d4f92;
+    --slab:#3b5470; --slab2:#26374c; --slabE:#16222f;
+    --ink:#0b2b4d;                       /* the hard outline on everything */
+    --blue:#4fb0fb; --blueM:#2f92ef; --blueD:#1a6fc4; --blueE:#0e4c8c;
+    --gold:#ffd451; --goldM:#ffb92c; --goldD:#e0900f; --goldE:#a86307;
+    --green:#5fd94a; --greenM:#3fbb2c; --greenD:#2b8c1d; --greenE:#1d6413;
+    --red:#f4574a; --redM:#dd3324; --redD:#ab2015; --redE:#79150d;
+  }
   *{ margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none;
      -webkit-tap-highlight-color:transparent; touch-action:none;
      font-family:"Baloo 2",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   html,body{ width:100%; height:100%; overflow:hidden; background:#0d2233; }
   #game{ display:block; width:100%; height:100%; }
+  /* the black keyline that makes chunky arcade lettering readable on any colour */
+  .outline{ text-shadow:
+     -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink),
+     -2px -2px var(--ink), 2px -2px var(--ink), -2px 2px var(--ink), 2px 2px var(--ink),
+     0 4px 0 rgba(0,0,0,.28); }
 
   /* ============ HUD ============ */
   #hud{ position:fixed; inset:0; pointer-events:none; z-index:10; display:none; }
-  #topbar{ position:absolute; top:0; left:0; right:0; height:58px; display:flex; align-items:center;
-    justify-content:space-between; padding:8px 16px; background:linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,0)); }
-  .hudpill{ background:rgba(0,0,0,.4); color:#fff; padding:7px 14px; border-radius:16px;
-    font-weight:800; font-size:17px; letter-spacing:.3px; text-shadow:0 1px 2px rgba(0,0,0,.6);
+  #topbar{ position:absolute; top:0; left:0; right:0; height:62px; display:flex; align-items:center;
+    justify-content:space-between; padding:9px 14px; }
+  .hudpill{ background:linear-gradient(var(--slab),var(--slab2)); color:#fff; padding:7px 15px;
+    border:3px solid var(--ink); border-radius:14px; box-shadow:0 3px 0 rgba(0,0,0,.35);
+    font-weight:900; font-size:17px; letter-spacing:.4px; text-shadow:0 2px 0 rgba(0,0,0,.45);
     display:flex; align-items:center; gap:6px; }
   #lives{ font-size:22px; letter-spacing:2px; }
   #timer{ font-variant-numeric:tabular-nums; }
-  #pauseBtn{ pointer-events:auto; background:rgba(0,0,0,.4); color:#fff; border:none;
-    width:42px; height:42px; border-radius:50%; font-size:18px; }
-  #centerMsg{ position:absolute; top:64px; left:50%; transform:translateX(-50%);
-    color:#fff; font-weight:900; font-size:clamp(16px,3.4vw,24px);
-    text-shadow:0 2px 6px rgba(0,0,0,.7); text-align:center; opacity:0; transition:opacity .3s;
-    background:rgba(0,0,0,.3); padding:6px 16px; border-radius:14px; white-space:nowrap; }
+  #pauseBtn{ pointer-events:auto; background:linear-gradient(var(--slab),var(--slab2)); color:#fff;
+    border:3px solid var(--ink); width:44px; height:44px; border-radius:50%; font-size:17px;
+    box-shadow:0 3px 0 rgba(0,0,0,.35); }
+  #centerMsg{ position:absolute; top:70px; left:50%; transform:translateX(-50%);
+    color:#fff; font-weight:900; font-size:clamp(16px,3.4vw,24px); letter-spacing:.4px;
+    text-align:center; opacity:0; transition:opacity .3s;
+    background:linear-gradient(var(--slab),var(--slab2)); border:3px solid var(--ink);
+    padding:7px 18px; border-radius:14px; white-space:nowrap; box-shadow:0 4px 0 rgba(0,0,0,.3);
+    text-shadow:0 2px 0 rgba(0,0,0,.45); }
 
   /* ============ Touch controls ============ */
   #stickZone{ position:absolute; left:0; bottom:0; width:46%; height:72%; pointer-events:auto; }
@@ -40,118 +65,263 @@
   .actbtn{ position:absolute; pointer-events:auto; border-radius:50%; display:flex; align-items:center;
     justify-content:center; font-weight:900; color:#fff; text-shadow:0 2px 3px rgba(0,0,0,.5);
     border:3px solid rgba(255,255,255,.55); box-shadow:0 4px 14px rgba(0,0,0,.35); line-height:1.05;
-    text-align:center; transition:transform .05s; }
+    text-align:center; transition:transform .05s; text-transform:uppercase; }
   .actbtn:active{ transform:scale(.92); }
   #jumpBtn{ right:32px; bottom:40px; width:120px; height:120px; font-size:22px; background:rgba(90,200,120,.6); }
   #lookBtn{ right:150px; bottom:120px; width:82px; height:82px; font-size:14px; background:rgba(120,170,255,.5); }
 
   /* ============ Screens ============ */
   .screen{ position:fixed; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center;
-    justify-content:center; text-align:center; color:#fff; padding:22px; overflow-y:auto; }
+    text-align:center; color:#fff; overflow:hidden; }
   .hidden{ display:none !important; }
+  /* bright blue ground with a soft centre glow and a tiled fruit watermark */
   #menuBG{ position:fixed; inset:0; z-index:20;
-    background:
-      radial-gradient(circle at 22% 16%, rgba(255,150,90,.40), transparent 44%),
-      radial-gradient(circle at 80% 24%, rgba(120,90,255,.38), transparent 46%),
-      radial-gradient(circle at 50% 98%, rgba(20,90,150,.55), transparent 58%),
-      linear-gradient(#123a5c, #0a1a2c); }
-  .fruitfloat{ position:absolute; font-size:42px; opacity:.5; animation:bob 6s ease-in-out infinite; pointer-events:none; }
+    background-color:var(--sky2);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cg fill='rgba(255,255,255,0.075)'%3E%3Ccircle cx='52' cy='96' r='25'/%3E%3Ccircle cx='99' cy='105' r='19'/%3E%3Cpath d='M55 70 Q66 34 100 40 L96 53 Q73 49 64 74 Z'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(ellipse 78% 64% at 50% 42%, #4fb6f7 0%, var(--sky) 46%, var(--sky2) 76%, var(--skyDeep) 100%);
+    background-repeat:repeat, no-repeat; }
+  .fruitfloat{ position:absolute; font-size:42px; opacity:.35; animation:bob 6s ease-in-out infinite; pointer-events:none; }
   @keyframes bob{ 0%,100%{ transform:translateY(0) rotate(-8deg);} 50%{ transform:translateY(-22px) rotate(8deg);} }
 
-  h1.logo{ font-size:clamp(40px,10vw,84px); font-weight:900; line-height:1;
-    background:linear-gradient(#ffe36e,#ff7ab0 55%,#ff4d6d);
+  /* ---- the shared bar every sub-screen wears ---- */
+  .topbar2{ position:absolute; top:0; left:0; right:0; height:64px; display:flex; align-items:flex-start;
+    justify-content:space-between; pointer-events:none; z-index:6; }
+  .tbSlab{ pointer-events:auto; cursor:pointer; border:none; height:56px; min-width:118px;
+    background:linear-gradient(var(--slab) 0%, var(--slab2) 60%, var(--slabE) 100%);
+    box-shadow:0 4px 0 rgba(0,0,0,.4); transform:skewX(-13deg);
+    display:flex; align-items:center; justify-content:center; color:#fff; }
+  .tbSlab > *{ transform:skewX(13deg); }
+  .tbSlab:active{ transform:skewX(-13deg) translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.4); }
+  .tbSlab.left{ margin-left:-26px; border-radius:0 0 14px 0; padding-right:16px; }
+  .tbSlab.right{ margin-right:-26px; border-radius:0 0 0 14px; padding-left:16px; }
+  .chev{ display:block; width:17px; height:17px; border-left:7px solid #fff; border-bottom:7px solid #fff;
+    border-radius:3px; }
+  .tbSlab.left .chev{ transform:skewX(13deg) rotate(45deg); }
+  .homeIco{ display:block; width:30px; height:30px; }
+  .tbTitle{ flex:1; align-self:center; padding:6px 8px 0; font-weight:900; letter-spacing:1.2px;
+    text-transform:uppercase; font-size:clamp(19px,4.4vw,30px); text-align:center; }
+  /* a scrim behind the bar so a scrolled list slides under it, not through it */
+  .topbar2::before{ content:""; position:absolute; inset:-2px 0 0; z-index:-1;
+    background:linear-gradient(rgba(8,54,104,.97) 0%, rgba(8,54,104,.88) 58%, rgba(8,54,104,0) 100%); }
+  /* the scrolling area below the bar */
+  .sbody{ flex:1; width:100%; min-height:0; overflow-y:auto; touch-action:pan-y;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:74px 20px 22px; }
+  .sbody.top{ justify-content:flex-start; }
+
+  h1.logo{ font-size:clamp(38px,9.4vw,80px); font-weight:900; line-height:1; text-transform:uppercase;
+    background:linear-gradient(#fff6b0,#ffd451 46%,#ff9c2e);
     -webkit-background-clip:text; background-clip:text; color:transparent;
-    filter:drop-shadow(0 4px 0 rgba(0,0,0,.28)); letter-spacing:1px; }
-  h1.logo.logo-sad{ font-size:clamp(36px,9vw,64px);
-    background:linear-gradient(#ffd0d0,#ff5c78);
+    filter:drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink))
+           drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink))
+           drop-shadow(0 6px 0 rgba(0,0,0,.3)); letter-spacing:1.5px; }
+  h1.logo.logo-sad{ font-size:clamp(34px,8.4vw,60px);
+    background:linear-gradient(#ffe0e0,#ff6a80);
     -webkit-background-clip:text; background-clip:text; }
-  /* if a browser can't paint a gradient into text, show solid readable text instead */
   @supports not ((-webkit-background-clip:text) or (background-clip:text)){
-    h1.logo{ background:none !important; color:#ffd75e; -webkit-text-fill-color:#ffd75e; }
+    h1.logo{ background:none !important; color:#ffd451; -webkit-text-fill-color:#ffd451; }
     h1.logo.logo-sad{ color:#ff8fa3; -webkit-text-fill-color:#ff8fa3; }
     .logo .sub{ color:#fff; -webkit-text-fill-color:#fff; }
   }
-  .logo .sub{ display:block; font-size:.34em; letter-spacing:6px; color:#fff; -webkit-text-fill-color:#fff;
-    background:none; margin-top:6px; opacity:.9; }
-  .tag{ font-size:clamp(14px,3.2vw,20px); opacity:.9; margin:14px 0 26px; max-width:640px; line-height:1.5; }
+  .logo .sub{ display:block; font-size:.32em; letter-spacing:8px; color:#fff; -webkit-text-fill-color:#fff;
+    background:none; margin-top:7px; }
+  .tag{ font-size:clamp(13px,3.1vw,19px); font-weight:700; margin:12px 0 20px; max-width:640px;
+    line-height:1.5; text-shadow:0 2px 0 rgba(0,0,0,.35); }
 
-  .btn{ pointer-events:auto; cursor:pointer; border:none; border-radius:18px; margin:7px;
-    padding:15px 32px; font-size:clamp(17px,3.6vw,22px); font-weight:900; min-width:230px;
-    color:#5a1020; background:linear-gradient(#fff0a6,#ffd34d); box-shadow:0 6px 0 #d99a17, 0 10px 18px rgba(0,0,0,.35); }
-  .btn:active{ transform:translateY(4px); box-shadow:0 2px 0 #d99a17, 0 4px 10px rgba(0,0,0,.35); }
-  .btn.alt{ color:#fff; background:linear-gradient(#ff86a8,#ff4d6d); box-shadow:0 6px 0 #c02a48, 0 10px 18px rgba(0,0,0,.35); }
-  .btn.alt:active{ box-shadow:0 2px 0 #c02a48, 0 4px 10px rgba(0,0,0,.35); }
-  .btn.ghost{ color:#fff; background:rgba(255,255,255,.14); box-shadow:0 4px 0 rgba(0,0,0,.3); border:2px solid rgba(255,255,255,.3); min-width:180px; }
-  .btn.small{ min-width:120px; padding:12px 22px; font-size:17px; }
+  /* ---- buttons ---- */
+  .btn{ pointer-events:auto; cursor:pointer; margin:6px; padding:13px 26px;
+    font-size:clamp(15px,3.3vw,20px); font-weight:900; text-transform:uppercase; letter-spacing:.7px;
+    min-width:230px; color:#fff; border:3px solid var(--ink); border-radius:13px;
+    background:linear-gradient(var(--blue) 0%, var(--blueM) 46%, var(--blueD) 54%, var(--blueD) 100%);
+    box-shadow:0 5px 0 var(--blueE), 0 9px 14px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.4);
+    text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .btn:active{ transform:translateY(4px);
+    box-shadow:0 1px 0 var(--blueE), 0 3px 8px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.4); }
+  .btn.gold{ color:#5a2a06;
+    background:linear-gradient(var(--gold) 0%, var(--goldM) 46%, var(--goldD) 54%, var(--goldD) 100%);
+    box-shadow:0 5px 0 var(--goldE), 0 9px 14px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.5);
+    text-shadow:0 2px 0 rgba(255,255,255,.32); }
+  .btn.gold:active{ box-shadow:0 1px 0 var(--goldE), 0 3px 8px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.5); }
+  .btn.green{ background:linear-gradient(var(--green) 0%, var(--greenM) 46%, var(--greenD) 54%, var(--greenD) 100%);
+    box-shadow:0 5px 0 var(--greenE), 0 9px 14px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.4); }
+  .btn.green:active{ box-shadow:0 1px 0 var(--greenE), 0 3px 8px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.4); }
+  /* the old names still used around the game, re-pointed at the new palette */
+  .btn.alt{ background:linear-gradient(var(--red) 0%, var(--redM) 46%, var(--redD) 54%, var(--redD) 100%);
+    box-shadow:0 5px 0 var(--redE), 0 9px 14px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.4); }
+  .btn.alt:active{ box-shadow:0 1px 0 var(--redE), 0 3px 8px rgba(0,0,0,.32), inset 0 2px 0 rgba(255,255,255,.4); }
+  .btn.ghost{ min-width:190px;
+    background:linear-gradient(var(--slab) 0%, var(--slab2) 50%, var(--slabE) 100%);
+    box-shadow:0 5px 0 rgba(0,0,0,.45), 0 9px 14px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.18); }
+  .btn.ghost:active{ box-shadow:0 1px 0 rgba(0,0,0,.45), 0 3px 8px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.18); }
+  .btn.small{ min-width:128px; padding:11px 20px; font-size:16px; }
+  .btn:disabled{ filter:grayscale(.5) brightness(.8); }
 
-  .panel{ background:rgba(8,24,40,.86); border:2px solid rgba(255,255,255,.15); border-radius:24px;
-    padding:26px 26px 22px; max-width:560px; width:92%; box-shadow:0 20px 60px rgba(0,0,0,.5); }
-  .panel h2{ font-size:clamp(24px,6vw,38px); margin-bottom:18px; }
+  /* ---- panels and rows ---- */
+  .panel{ background:linear-gradient(rgba(6,40,74,.62), rgba(4,26,50,.72));
+    border:3px solid rgba(255,255,255,.22); border-radius:20px;
+    padding:20px 20px 18px; max-width:600px; width:100%;
+    box-shadow:0 14px 34px rgba(0,0,0,.4), inset 0 2px 0 rgba(255,255,255,.14); }
+  .panel h2{ font-size:clamp(21px,5.2vw,32px); margin-bottom:14px; text-transform:uppercase; letter-spacing:1px; }
   .optrow{ display:flex; align-items:center; justify-content:space-between; gap:14px;
-    background:rgba(255,255,255,.06); border-radius:14px; padding:14px 18px; margin:12px 0; }
-  .optrow .lbl{ font-size:clamp(16px,3.6vw,20px); font-weight:800; text-align:left; }
-  .optrow .lbl small{ display:block; font-weight:600; opacity:.65; font-size:.75em; }
-  .toggle{ pointer-events:auto; cursor:pointer; width:70px; height:38px; border-radius:20px;
-    background:#3a4a55; position:relative; transition:background .15s; flex:0 0 auto; }
-  .toggle.on{ background:#57d36a; }
-  .toggle::after{ content:""; position:absolute; top:4px; left:4px; width:30px; height:30px; border-radius:50%;
-    background:#fff; transition:left .15s; box-shadow:0 2px 4px rgba(0,0,0,.4); }
-  .toggle.on::after{ left:36px; }
-  .lbrow{ display:flex; justify-content:space-between; padding:10px 14px; border-radius:10px; font-weight:800;
-    background:rgba(255,255,255,.05); margin:6px 0; font-size:16px; }
-  .lbrow .who{ flex:1; text-align:left; padding:0 12px; }
-  .lbrow.best{ background:linear-gradient(90deg, rgba(255,211,77,.35), rgba(255,120,150,.2)); }
+    background:linear-gradient(var(--slab2), var(--slabE)); border:3px solid var(--ink);
+    border-radius:13px; padding:11px 15px; margin:11px 0;
+    box-shadow:0 3px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.1); }
+  .optrow .lbl{ font-size:clamp(14px,3.3vw,19px); font-weight:900; text-align:left;
+    text-transform:uppercase; letter-spacing:.5px; text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .optrow .lbl small{ display:block; font-weight:700; opacity:.62; font-size:.7em;
+    text-transform:none; letter-spacing:0; }
+  /* ON | OFF pair, lit green or red — tapping anywhere on it flips the setting */
+  .toggle{ pointer-events:auto; cursor:pointer; flex:0 0 auto; display:flex; overflow:hidden;
+    width:148px; height:44px; border:3px solid var(--ink); border-radius:11px;
+    background:#1b2836; box-shadow:0 3px 0 rgba(0,0,0,.35); }
+  .toggle::before, .toggle::after{ flex:1; display:flex; align-items:center; justify-content:center;
+    font-weight:900; font-size:15px; letter-spacing:1px; color:rgba(255,255,255,.5);
+    text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .toggle::before{ content:"ON"; }
+  .toggle::after{ content:"OFF"; }
+  .toggle.on::before{ color:#fff; border-radius:7px;
+    background:linear-gradient(var(--green), var(--greenD)); box-shadow:inset 0 2px 0 rgba(255,255,255,.35); }
+  .toggle:not(.on)::after{ color:#fff; border-radius:7px;
+    background:linear-gradient(var(--red), var(--redD)); box-shadow:inset 0 2px 0 rgba(255,255,255,.3); }
+  /* leaderboard rows */
+  .lbrow{ display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:11px; font-weight:900;
+    background:linear-gradient(var(--slab2), var(--slabE)); border:3px solid var(--ink);
+    margin:7px 0; font-size:16px; box-shadow:0 3px 0 rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.09);
+    text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .lbrow .rank{ flex:0 0 auto; min-width:34px; height:30px; display:flex; align-items:center;
+    justify-content:center; border-radius:8px; background:rgba(0,0,0,.35); font-size:15px; }
+  .lbrow .who{ flex:1; text-align:left; padding:0 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lbrow.best{ background:linear-gradient(#ffa93a, #ef7a12); border-color:#7d3c02; }
+  .lbrow.best .rank{ background:rgba(0,0,0,.22); }
+
+  /* ---- profile stat tiles ---- */
+  .statRow{ display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:9px; margin-top:11px; }
+  .stat .lab{ font-size:clamp(9px,2.2vw,11px); font-weight:900; text-transform:uppercase;
+    letter-spacing:.7px; margin-bottom:3px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
+  .stat .bar{ display:flex; align-items:center; justify-content:center; gap:7px; height:40px;
+    padding:0 9px; border:3px solid var(--ink); border-radius:10px;
+    background:linear-gradient(var(--slab2), var(--slabE));
+    box-shadow:0 3px 0 rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.09); }
+  .stat .bar .ico{ font-size:18px; line-height:1; }
+  .stat .bar .val{ font-weight:900; font-size:clamp(14px,3.2vw,17px); font-variant-numeric:tabular-nums;
+    text-shadow:0 2px 0 rgba(0,0,0,.45); }
+
+  /* ---- profile cards on the Profiles screen ---- */
+  #profileScreen .panel{ background:none; border:none; box-shadow:none; padding:0; }
+  #profileScreen .sbody{ padding-bottom:26px; }
+  .profBadge{ flex:0 0 auto; padding:7px 13px; border-radius:9px; font-size:12px; font-weight:900;
+    letter-spacing:.8px; text-transform:uppercase; background:rgba(0,0,0,.3);
+    border:2px solid rgba(0,0,0,.35); text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .profCard{ width:100%; text-align:left; border:3px solid var(--ink); border-radius:16px;
+    padding:12px; margin:11px 0; background:linear-gradient(rgba(12,58,102,.85), rgba(7,36,68,.9));
+    box-shadow:0 5px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.12); }
+  .profCard.on{ background:linear-gradient(#ffa93a, #e2740f); }
+  .profCard.on .stat .bar{ background:linear-gradient(rgba(0,0,0,.4), rgba(0,0,0,.52)); }
+  .profHead{ display:flex; align-items:center; gap:11px; }
+  .profAva{ flex:0 0 auto; width:54px; height:54px; border-radius:12px; display:grid; place-items:center;
+    font-size:29px; border:3px solid var(--ink);
+    background:linear-gradient(#5ec8f2, #2f92ef); box-shadow:inset 0 2px 0 rgba(255,255,255,.35); }
+  .profWhoName{ flex:1; min-width:0; font-size:clamp(17px,4vw,24px); font-weight:900;
+    text-transform:uppercase; letter-spacing:.6px; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; text-shadow:0 2px 0 rgba(0,0,0,.45); }
+  .profWhoName .sub{ display:block; font-size:.52em; letter-spacing:.4px; text-transform:none;
+    font-weight:800; opacity:.8; }
+  .profPick{ flex:0 0 auto; margin:0; min-width:104px; padding:10px 14px; font-size:14px; }
+  .profTimes{ display:flex; gap:7px; margin-top:9px; }
+  .profTimes .stat{ flex:1; }
+
+  /* ---- the profile chip on the main menu ---- */
+  #menuProf{ display:flex; align-items:center; gap:9px; margin:4px 0 14px; }
+  #menuProfPick{ pointer-events:auto; cursor:pointer; -webkit-appearance:none; appearance:none;
+    font:inherit; font-weight:900; font-size:clamp(15px,3.4vw,19px); text-transform:uppercase;
+    letter-spacing:.6px; color:#fff; text-align:center; text-align-last:center;
+    padding:12px 30px; border:3px solid var(--ink); border-radius:13px;
+    width:min(300px,64vw); text-shadow:0 2px 0 rgba(0,0,0,.4);
+    background-color:var(--slab2);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Cpath d='M3 6l5 6 5-6z' fill='rgba(255,255,255,.85)'/%3E%3C/svg%3E"),
+      linear-gradient(var(--slab) 0%, var(--slab2) 55%, var(--slabE) 100%);
+    background-repeat:no-repeat, no-repeat;
+    background-position:right 11px center, center;
+    box-shadow:0 4px 0 rgba(0,0,0,.4), inset 0 2px 0 rgba(255,255,255,.16); }
+  #menuProfPick option{ background:#22374c; color:#fff; text-transform:none; }
+  .cogBtn{ pointer-events:auto; cursor:pointer; flex:0 0 auto; width:50px; height:50px;
+    border:3px solid var(--ink); border-radius:13px; font-size:22px; color:#fff; margin:0; min-width:0;
+    background:linear-gradient(var(--blue) 0%, var(--blueM) 50%, var(--blueD) 100%);
+    box-shadow:0 4px 0 var(--blueE), inset 0 2px 0 rgba(255,255,255,.4); padding:0; }
+  .cogBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--blueE), inset 0 2px 0 rgba(255,255,255,.4); }
 
   /* ===== Character select: three bands so nothing sits over the model ===== */
-  #charScreen{ justify-content:space-between; padding:0; }
-  #charTop{ width:100%; padding:12px 16px 6px; background:linear-gradient(rgba(4,14,26,.92), rgba(4,14,26,0)); }
-  #charTop .kicker{ font-size:clamp(14px,3.4vw,20px); font-weight:800; opacity:.85; }
-  #charName{ font-size:clamp(24px,6vw,40px); font-weight:900; text-shadow:0 3px 0 rgba(0,0,0,.35); line-height:1.1; }
+  #charScreen .sbody{ padding:0; justify-content:space-between; }
+  #charTop{ width:100%; padding:66px 16px 6px; }
+  #charTop .kicker{ font-size:clamp(12px,3vw,17px); font-weight:900; text-transform:uppercase;
+    letter-spacing:1px; opacity:.9; text-shadow:0 2px 0 rgba(0,0,0,.45); }
+  #charName{ font-size:clamp(22px,5.6vw,38px); font-weight:900; text-transform:uppercase;
+    letter-spacing:1px; line-height:1.1; }
   #charMid{ flex:1; width:100%; display:flex; align-items:center; justify-content:space-between; padding:0 14px; }
-  #charBot{ width:100%; padding:6px 16px 14px; background:linear-gradient(rgba(4,14,26,0), rgba(4,14,26,.92)); }
-  .arrow{ pointer-events:auto; cursor:pointer; width:62px; height:62px; border-radius:50%; border:none;
-    font-size:28px; color:#fff; background:rgba(255,255,255,.18); box-shadow:0 4px 0 rgba(0,0,0,.35); }
-  .arrow:active{ transform:translateY(3px); }
+  #charBot{ width:100%; padding:6px 16px 14px; background:linear-gradient(rgba(4,22,44,0), rgba(4,22,44,.8)); }
+  .arrow{ pointer-events:auto; cursor:pointer; width:60px; height:60px; border-radius:50%;
+    border:3px solid var(--ink); font-size:25px; color:#fff;
+    background:linear-gradient(var(--slab) 0%, var(--slab2) 55%, var(--slabE) 100%);
+    box-shadow:0 4px 0 rgba(0,0,0,.4), inset 0 2px 0 rgba(255,255,255,.18);
+    text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .arrow:active{ transform:translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,.4), inset 0 2px 0 rgba(255,255,255,.18); }
 
   /* The costume arrows used to be absolutely positioned and landed on top of
      the next-character arrow, which swallowed the taps. They now sit in a row
      beside it so the two can never overlap. */
   #rightCol{ display:flex; align-items:center; gap:12px; pointer-events:auto; }
   #cosCol{ display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:auto; }
-  #cosName{ font-size:clamp(12px,3vw,16px); font-weight:800; opacity:.9; margin-bottom:6px; }
+  #cosName{ font-size:clamp(11px,2.8vw,15px); font-weight:900; text-transform:uppercase;
+    letter-spacing:.6px; opacity:.92; margin-bottom:6px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
   #charRow{ display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; }
-  #accDrawer{ position:fixed; inset:0; z-index:70; background:rgba(4,14,26,.96);
-    display:flex; flex-direction:column; padding:14px; color:#fff; }
+  #accDrawer{ position:fixed; inset:0; z-index:70; display:flex; flex-direction:column; color:#fff;
+    text-align:center;
+    background-color:var(--sky2);
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cg fill='rgba(255,255,255,0.075)'%3E%3Ccircle cx='52' cy='96' r='25'/%3E%3Ccircle cx='99' cy='105' r='19'/%3E%3Cpath d='M55 70 Q66 34 100 40 L96 53 Q73 49 64 74 Z'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(ellipse 78% 64% at 50% 42%, #4fb6f7 0%, var(--sky) 46%, var(--sky2) 76%, var(--skyDeep) 100%);
+    background-repeat:repeat, no-repeat; }
+  #accBody{ flex:1; min-height:0; display:flex; flex-direction:column; padding:66px 14px 12px; }
   #accDrawer h2{ color:#fff; }
-  #accDrawer .tag{ color:rgba(255,255,255,.82); }
+  #accDrawer .tag{ color:rgba(255,255,255,.88); }
   #accDrawer #accClose{ align-self:center; max-width:260px; min-width:200px; }
   #accEmpty{ grid-column:1/-1; text-align:center; padding:26px 10px;
-    font-size:clamp(15px,3.8vw,20px); font-weight:800; color:#ffe07a; line-height:1.5; }
-  #accGrid{ flex:1; overflow-y:auto; display:grid; gap:10px; padding:4px 2px 10px;
+    font-size:clamp(15px,3.8vw,20px); font-weight:900; color:#ffe07a; line-height:1.5;
+    text-transform:uppercase; letter-spacing:.5px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
+  #accGrid{ flex:1; overflow-y:auto; touch-action:pan-y; display:grid; gap:9px; padding:4px 2px 10px;
     grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); align-content:start; }
-  .accCard{ cursor:pointer; border:none; border-radius:14px; padding:10px 6px; color:#fff;
-    background:rgba(255,255,255,.14); font:inherit; font-weight:800; font-size:12px;
-    box-shadow:0 3px 0 rgba(0,0,0,.35); line-height:1.25; }
-  .accCard .tag{ display:block; font-size:10px; opacity:.65; font-weight:700; margin-top:3px; }
-  .accCard.on{ background:#4dc3ff; color:#062033; }
-  #profWho{ font-size:clamp(13px,3.2vw,17px); font-weight:800; opacity:.9; margin:2px 0 10px; }
+  .accCard{ cursor:pointer; border:3px solid var(--ink); border-radius:12px; padding:9px 6px; color:#fff;
+    font:inherit; font-weight:900; font-size:12px; text-transform:uppercase; letter-spacing:.3px;
+    background:linear-gradient(var(--slab), var(--slab2));
+    box-shadow:0 3px 0 rgba(0,0,0,.4), inset 0 2px 0 rgba(255,255,255,.14); line-height:1.25;
+    text-shadow:0 2px 0 rgba(0,0,0,.4); }
+  .accCard .tag{ display:block; font-size:10px; opacity:.68; font-weight:800; margin-top:3px;
+    text-transform:none; letter-spacing:0; text-shadow:none; }
+  .accCard.on{ background:linear-gradient(var(--gold), var(--goldD)); color:#5a2a06;
+    border-color:#7d4a02; text-shadow:0 2px 0 rgba(255,255,255,.3); }
+  #profWho{ font-size:clamp(12px,3vw,16px); font-weight:900; text-transform:uppercase; letter-spacing:.5px;
+    opacity:.92; margin:2px 0 9px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
   #profInput{ pointer-events:auto; -webkit-user-select:text; user-select:text; touch-action:auto;
-    font:inherit; font-size:clamp(17px,4vw,21px); font-weight:800; padding:13px 16px;
-    border-radius:14px; border:2px solid rgba(255,255,255,.35); background:rgba(255,255,255,.92);
-    color:#3a1020; width:min(300px,60vw); text-align:center; }
-  #profInput:focus{ outline:none; border-color:#ffd34d; box-shadow:0 0 0 4px rgba(255,211,77,.35); }
-  #profPick{ pointer-events:auto; font:inherit; font-size:clamp(15px,3.6vw,19px); font-weight:800;
-    padding:12px 14px; border-radius:14px; border:2px solid rgba(255,255,255,.35);
-    background:rgba(255,255,255,.92); color:#3a1020; width:min(320px,72vw); }
-  #unlockNote{ font-size:clamp(14px,3.6vw,20px); font-weight:800; margin:6px 0 10px; color:#ffe07a; }
+    font:inherit; font-size:clamp(17px,4vw,21px); font-weight:900; padding:12px 16px;
+    border-radius:13px; border:3px solid var(--ink); background:#fff;
+    color:#123; width:min(300px,58vw); text-align:center; }
+  #profInput:focus{ outline:none; box-shadow:0 0 0 4px rgba(255,212,81,.55); }
+  #unlockNote{ font-size:clamp(14px,3.6vw,20px); font-weight:900; margin:6px 0 10px; color:#ffe07a;
+    text-transform:uppercase; letter-spacing:.5px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
   .dots{ display:flex; gap:7px; justify-content:center; margin-bottom:8px; }
-  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.3); }
-  .dot.on{ background:#ffd34d; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(0,0,0,.35);
+    border:2px solid rgba(255,255,255,.35); }
+  .dot.on{ background:var(--gold); border-color:var(--goldE); }
 
+  /* the paused panel floats over the live game, so dim what is behind it */
+  #pauseScreen{ background:rgba(4,20,40,.55); }
   #intro{ position:fixed; inset:0; z-index:60; background:#07182a; display:flex; align-items:center;
     justify-content:center; flex-direction:column; }
   #introTitle{ opacity:0; }
-  #introBy{ opacity:0; margin-top:26px; font-size:clamp(18px,4vw,28px); color:#ffd7e6; font-weight:800; letter-spacing:1px; }
+  #introBy{ opacity:0; margin-top:26px; font-size:clamp(18px,4vw,28px); color:#ffd7e6; font-weight:900;
+    letter-spacing:1px; text-transform:uppercase; }
   .fadeUp{ animation:fadeUp 1.1s ease forwards; }
   @keyframes fadeUp{ from{ opacity:0; transform:translateY(24px) scale(.96);} to{ opacity:1; transform:none;} }
   .fadeIn{ animation:fadeIn 1s ease forwards; }
@@ -161,31 +331,41 @@
     flex-direction:column; background:#07182a; color:#fff; text-align:center; padding:30px; }
   #rotate .ico{ font-size:70px; margin-bottom:14px; animation:spin 2s ease-in-out infinite; }
   @keyframes spin{ 0%,40%{transform:rotate(0)} 60%,100%{transform:rotate(90deg)} }
-  .credit{ position:absolute; bottom:12px; font-size:13px; opacity:.55; }
+  .credit{ font-size:13px; font-weight:800; opacity:.7; text-shadow:0 2px 0 rgba(0,0,0,.4); }
 
   /* winner's name entry — inputs need selection and touch back on */
   #nameRow{ margin:2px 0 14px; }
-  #nameLabel{ display:block; font-size:clamp(13px,3vw,17px); font-weight:800; opacity:.9; margin-bottom:8px; }
+  #nameLabel{ display:block; font-size:clamp(12px,2.9vw,16px); font-weight:900; text-transform:uppercase;
+    letter-spacing:.6px; opacity:.92; margin-bottom:8px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
   .nameFields{ display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; }
   #nameInput{ pointer-events:auto; -webkit-user-select:text; user-select:text; touch-action:auto;
-    width:min(58vw,240px); padding:13px 16px; border-radius:14px; border:2px solid rgba(255,255,255,.35);
-    background:rgba(255,255,255,.94); color:#3a1020; font-size:clamp(16px,3.6vw,20px); font-weight:800;
-    text-align:center; }
-  #nameInput:focus{ outline:none; border-color:#ffd34d; box-shadow:0 0 0 4px rgba(255,211,77,.35); }
-  #nameInput:disabled{ background:rgba(255,255,255,.55); color:#6a5560; }
+    width:min(58vw,240px); padding:12px 16px; border-radius:13px; border:3px solid var(--ink);
+    background:#fff; color:#123; font-size:clamp(16px,3.6vw,20px); font-weight:900; text-align:center; }
+  #nameInput:focus{ outline:none; box-shadow:0 0 0 4px rgba(255,212,81,.55); }
+  #nameInput:disabled{ background:#d8dee4; color:#6a7580; }
   #nameSave{ margin:0; }
 
-  @media (max-height: 520px){
-    h1.logo{ font-size:clamp(26px,7.5vw,46px); }
-    .logo .sub{ font-size:.3em; letter-spacing:4px; margin-top:2px; }
-    .tag{ font-size:13px; margin:8px 0 12px; line-height:1.35; }
-    .btn{ padding:10px 26px; font-size:16px; margin:5px; min-width:210px; }
-    .btn.ghost{ min-width:170px; }
+  @media (max-height: 620px){
+    h1.logo{ font-size:clamp(25px,7vw,44px); }
+    .logo .sub{ font-size:.3em; letter-spacing:5px; margin-top:2px; }
+    .tag{ font-size:13px; margin:13px 0 10px; line-height:1.35; }
+    .btn{ padding:9px 24px; font-size:15px; margin:4px; min-width:210px; }
+    .btn.ghost{ min-width:180px; }
+    .btn.small{ padding:8px 16px; font-size:14px; }
+    .topbar2{ height:52px; } .tbSlab{ height:46px; min-width:100px; }
+    .tbTitle{ font-size:clamp(16px,3.8vw,24px); }
+    .sbody{ padding:58px 16px 14px; }
+    #charTop{ padding:50px 16px 2px; }
+    #accBody{ padding:52px 12px 10px; }
     #mainMenu .credit{ display:none; }
-    .panel{ padding:16px 18px 14px; }
-    .panel h2{ margin-bottom:8px; }
-    .optrow{ padding:9px 14px; margin:8px 0; }
-    .arrow{ width:52px; height:52px; font-size:24px; }
+    #menuProf{ margin:2px 0 8px; }
+    #menuProfPick{ padding:9px 24px; } .cogBtn{ width:44px; height:44px; font-size:19px; }
+    .panel{ padding:14px 16px 12px; } .panel h2{ margin-bottom:8px; }
+    .optrow{ padding:8px 13px; margin:8px 0; }
+    .toggle{ width:126px; height:38px; }
+    .arrow{ width:50px; height:50px; font-size:22px; }
+    .profAva{ width:44px; height:44px; font-size:24px; }
+    .stat .bar{ height:34px; }
   }
 </style>
 </head>
@@ -215,128 +395,179 @@
 </div>
 
 <div class="screen hidden" id="mainMenu">
-  <h1 class="logo">🍒 FRUIT TOWER 🫐<span class="sub">C L I M B</span></h1>
-  <div class="tag">Set sail and climb the giant fruit! Bounce, swing from balloons and dodge to the top of three towers. 🍓</div>
-  <button class="btn" id="beginBtn">▶ Begin Game</button>
-  <button class="btn alt" id="optionsBtn">⚙ Options</button>
-  <button class="btn ghost" id="leaderBtn">🏆 Leaderboard</button>
-  <button class="btn alt" id="profileBtn">👧 Profile</button>
-  <div class="credit" id="menuWho"></div>
-  <button class="btn ghost" id="quitBtn">✖ Quit</button>
-  <div class="credit">a little game for Hazel 💛</div>
+  <div class="sbody">
+    <h1 class="logo">🍒 FRUIT TOWER 🫐<span class="sub">C L I M B</span></h1>
+    <div class="tag">Set sail and climb the giant fruit! Bounce, swing from balloons and dodge to the top of three towers. 🍓</div>
+    <!-- who is playing: pick from the saved profiles, or open the profiles screen -->
+    <div id="menuProf">
+      <select id="menuProfPick" aria-label="Player profile"></select>
+      <button class="cogBtn" id="profileBtn" aria-label="Profiles" title="Profiles">⚙</button>
+    </div>
+    <button class="btn gold" id="beginBtn">▶ Begin Game</button>
+    <button class="btn" id="optionsBtn">⚙ Settings</button>
+    <button class="btn" id="leaderBtn">🏆 Leaderboard</button>
+    <button class="btn ghost" id="quitBtn">✖ Quit</button>
+    <div class="credit" id="menuWho"></div>
+    <div class="credit">a little game for Hazel 💛</div>
+  </div>
 </div>
 
 <div class="screen hidden" id="optionsScreen">
-  <div class="panel">
-    <h2>⚙ Options</h2>
-    <div class="optrow"><div class="lbl">🎵 Music</div><div class="toggle" id="tgMusic"></div></div>
-    <div class="optrow"><div class="lbl">🔊 Sound Effects</div><div class="toggle" id="tgSfx"></div></div>
-    <div class="optrow"><div class="lbl">✨ Cheats <small>Unlimited lives</small></div><div class="toggle" id="tgCheat"></div></div>
-    <button class="btn small" id="optBack">◀ Back</button>
+  <div class="topbar2">
+    <button class="tbSlab left" id="optBack" data-back><span class="chev"></span></button>
+    <div class="tbTitle outline">Settings</div>
+    <button class="tbSlab right" data-home></button>
+  </div>
+  <div class="sbody">
+    <div class="panel">
+      <div class="optrow"><div class="lbl">🎵 Music</div><div class="toggle" id="tgMusic"></div></div>
+      <div class="optrow"><div class="lbl">🔊 Sound Effects</div><div class="toggle" id="tgSfx"></div></div>
+      <div class="optrow"><div class="lbl">✨ Cheats <small>Unlimited lives</small></div><div class="toggle" id="tgCheat"></div></div>
+    </div>
   </div>
 </div>
 
 <div class="screen hidden" id="leaderScreen">
-  <div class="panel">
-    <h2>🏆 Best Times</h2>
-    <div id="lbList"></div>
-    <button class="btn small" id="lbBack" style="margin-top:14px">◀ Back</button>
+  <div class="topbar2">
+    <button class="tbSlab left" id="lbBack" data-back><span class="chev"></span></button>
+    <div class="tbTitle outline">Leaderboard</div>
+    <button class="tbSlab right" data-home></button>
+  </div>
+  <div class="sbody">
+    <div class="panel">
+      <h2 class="outline">🏆 Best Times</h2>
+      <div id="lbList"></div>
+    </div>
   </div>
 </div>
 
 <!-- Character select: text top, model in the clear middle, controls bottom -->
 <div class="screen hidden" id="charScreen">
-  <div id="charTop">
-    <div class="kicker">Choose your climber!</div>
-    <div id="charName">—</div>
+  <div class="topbar2">
+    <button class="tbSlab left" id="charBack" data-back><span class="chev"></span></button>
+    <div class="tbTitle outline">Climbers</div>
+    <button class="tbSlab right" data-home></button>
   </div>
-  <div id="charMid">
-    <button class="arrow" id="charPrev">◀</button>
-    <div id="rightCol">
-      <div id="cosCol">
-        <button class="arrow" id="cosUp">▲</button>
-        <button class="arrow" id="cosDown">▼</button>
-      </div>
-      <button class="arrow" id="charNext">▶</button>
+  <div class="sbody">
+    <div id="charTop">
+      <div class="kicker">Choose your climber!</div>
+      <div id="charName" class="outline">—</div>
     </div>
-  </div>
-  <div id="charBot">
-    <div id="cosName">Costume: Original</div>
-    <div class="dots" id="charDots"></div>
-    <div id="charRow">
-      <button class="btn small" id="accBtn">👒 Accessories</button>
-      <button class="btn" id="charGo">Let's climb! 🧗</button>
+    <div id="charMid">
+      <button class="arrow" id="charPrev">◀</button>
+      <div id="rightCol">
+        <div id="cosCol">
+          <button class="arrow" id="cosUp">▲</button>
+          <button class="arrow" id="cosDown">▼</button>
+        </div>
+        <button class="arrow" id="charNext">▶</button>
+      </div>
+    </div>
+    <div id="charBot">
+      <div id="cosName">Costume: Original</div>
+      <div class="dots" id="charDots"></div>
+      <div id="charRow">
+        <button class="btn small" id="accBtn">👒 Accessories</button>
+        <button class="btn gold" id="charGo">Let's climb! 🧗</button>
+      </div>
     </div>
   </div>
 </div>
 
 <div id="accDrawer" class="hidden">
-  <h2 style="margin:2px 0 6px">👒 Your accessories</h2>
-  <div id="profWho"></div>
-  <div id="accGrid"></div>
-  <button class="btn" id="accClose">◀ Done</button>
+  <div class="topbar2">
+    <button class="tbSlab left" id="accBack" data-back><span class="chev"></span></button>
+    <div class="tbTitle outline">Accessories</div>
+    <button class="tbSlab right" data-home></button>
+  </div>
+  <div id="accBody">
+    <div id="profWho"></div>
+    <div id="accGrid"></div>
+    <button class="btn gold" id="accClose">◀ Done</button>
+  </div>
 </div>
 
+<!-- Profiles: every saved player with their stats, plus a way to make a new one -->
 <div class="screen hidden" id="profileScreen">
-  <div class="panel">
-    <h2>👧 Who's playing?</h2>
-    <div class="tag" style="margin-bottom:10px">Your unlocks are saved under this name on this device.</div>
-    <div class="nameFields">
-      <input id="profInput" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="Your name" />
-      <button class="btn small" id="profSave">Save</button>
+  <div class="topbar2">
+    <button class="tbSlab left" id="profBack" data-back><span class="chev"></span></button>
+    <div class="tbTitle outline">Profiles</div>
+    <button class="tbSlab right" data-home></button>
+  </div>
+  <div class="sbody top">
+    <div class="panel">
+      <div id="profList"></div>
+      <div id="profNewRow" class="hidden" style="margin-top:12px">
+        <div class="nameFields">
+          <input id="profInput" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="New player name" />
+          <button class="btn small gold" id="profSave">Create</button>
+        </div>
+      </div>
+      <button class="btn green" id="profNew" style="margin-top:12px">➕ New Profile</button>
     </div>
-    <div id="profList" style="margin-top:14px"></div>
-    <button class="btn small" id="profBack" style="margin-top:12px">◀ Back</button>
   </div>
 </div>
 
 <div class="screen hidden" id="pauseScreen">
-  <div class="panel">
-    <h2>⏸ Paused</h2>
-    <button class="btn" id="resumeBtn">▶ Resume</button>
-    <button class="btn alt" id="restartBtn">↺ Restart Level</button>
-    <button class="btn ghost" id="pMenuBtn">🏠 Main Menu</button>
+  <div class="sbody">
+    <div class="panel">
+      <h2 class="outline">⏸ Paused</h2>
+      <button class="btn green" id="resumeBtn">▶ Resume</button>
+      <button class="btn alt" id="restartBtn">↺ Restart Level</button>
+      <button class="btn ghost" id="pMenuBtn">🏠 Main Menu</button>
+    </div>
   </div>
 </div>
 
 <div class="screen hidden" id="levelScreen">
-  <h1 class="logo" id="levelTitle" style="font-size:clamp(30px,8vw,56px)">Level Done!</h1>
-  <div class="tag" id="levelStats"></div>
-  <button class="btn" id="levelNext">Next Tower ▶</button>
+  <div class="sbody">
+    <h1 class="logo" id="levelTitle" style="font-size:clamp(26px,7vw,50px)">Level Done!</h1>
+    <div class="tag" id="levelStats"></div>
+    <button class="btn gold" id="levelNext">Next Tower ▶</button>
+  </div>
 </div>
 
 <div class="screen hidden" id="winScreen">
-  <h1 class="logo" id="winTitle" style="font-size:clamp(34px,9vw,64px)">🎉 YOU WON! 🎉</h1>
-  <div class="tag" id="winStats"></div>
-  <div id="unlockNote"></div>
-  <div id="nameRow">
-    <label for="nameInput" id="nameLabel">Put your name on the leaderboard!</label>
-    <div class="nameFields">
-      <input id="nameInput" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Your name" />
-      <button class="btn small" id="nameSave">Save</button>
+  <div class="sbody">
+    <h1 class="logo" id="winTitle" style="font-size:clamp(30px,8vw,58px)">🎉 YOU WON! 🎉</h1>
+    <div class="tag" id="winStats"></div>
+    <div id="unlockNote"></div>
+    <div id="nameRow">
+      <label for="nameInput" id="nameLabel">Put your name on the leaderboard!</label>
+      <div class="nameFields">
+        <input id="nameInput" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="Your name" />
+        <button class="btn small gold" id="nameSave">Save</button>
+      </div>
     </div>
+    <button class="btn gold" id="winAgain">↺ Play Again</button>
+    <button class="btn ghost" id="winMenu">🏠 Main Menu</button>
   </div>
-  <button class="btn" id="winAgain">↺ Play Again</button>
-  <button class="btn ghost" id="winMenu">🏠 Main Menu</button>
 </div>
 
 <!-- Game over: no stats box, just a friendly nudge -->
 <div class="screen hidden" id="overScreen">
-  <h1 class="logo logo-sad">Game Over</h1>
-  <div class="tag">Nice try! Give it another shot?</div>
-  <button class="btn" id="overRetry">↺ Try Again</button>
-  <button class="btn ghost" id="overMenu">🏠 Main Menu</button>
+  <div class="sbody">
+    <h1 class="logo logo-sad">Game Over</h1>
+    <div class="tag">Nice try! Give it another shot?</div>
+    <button class="btn gold" id="overRetry">↺ Try Again</button>
+    <button class="btn ghost" id="overMenu">🏠 Main Menu</button>
+  </div>
 </div>
 
 <div class="screen hidden" id="quitScreen">
-  <h1 class="logo" style="font-size:clamp(30px,8vw,54px)">Bye for now! 👋</h1>
-  <div class="tag">Thanks for playing, Hazel. Close this tab whenever you like — or come back for more!</div>
-  <button class="btn" id="quitBack">◀ Back to Menu</button>
+  <div class="topbar2">
+    <button class="tbSlab left" id="quitBack" data-back><span class="chev"></span></button>
+    <div class="tbTitle outline">Bye!</div>
+    <button class="tbSlab right" data-home></button>
+  </div>
+  <div class="sbody">
+    <h1 class="logo" style="font-size:clamp(26px,7vw,48px)">Bye for now! 👋</h1>
+    <div class="tag">Thanks for playing, Hazel. Close this tab whenever you like — or come back for more!</div>
+  </div>
 </div>
 
 <div id="rotate"><div class="ico">📱</div><div style="font-size:22px;font-weight:800">Please turn your phone sideways</div>
   <div style="opacity:.7;margin-top:8px">Fruit Tower plays best in landscape</div></div>
-
 <script>
 "use strict";
 /* =========================================================================
@@ -911,17 +1142,36 @@ let chosen=0; try{ chosen=Math.max(0,Math.min(CHARACTERS.length-1, parseInt(loca
    A local "account" per name: the unlocks it has earned and what it is
    wearing. Several children can share one iPad and keep separate progress.
    ========================================================================= */
-const BLANK_PROFILE=()=>({beaten:0, accs:[], cos:[], equipAcc:null, equipCos:{}});
+const GUEST='Guest';
+// fruit is the lifetime count, best the quickest full run, bestLvl the quickest
+// climb of each tower on its own
+const BLANK_PROFILE=()=>({beaten:0, accs:[], cos:[], equipAcc:null, equipCos:{},
+  fruit:0, best:null, bestLvl:[null,null,null]});
 let profiles={}, profileName='';
 try{ profiles=JSON.parse(localStorage.getItem('ft_profiles')||'{}')||{}; }catch(e){ profiles={}; }
 try{ profileName=localStorage.getItem('ft_who')||''; }catch(e){}
-if(profileName && !profiles[profileName]) profileName='';
+// profiles saved before the stats existed get the new fields filled in
+function fixProfile(p){ const b=BLANK_PROFILE();
+  for(const k in b) if(p[k]===undefined) p[k]=b[k];
+  if(!Array.isArray(p.bestLvl) || p.bestLvl.length!==3) p.bestLvl=[null,null,null];
+  return p; }
+Object.keys(profiles).forEach(n=>fixProfile(profiles[n]));
+// there is always somebody to play as, so nothing ever blocks on being named
+function ensureGuest(){
+  if(!Object.keys(profiles).length) profiles[GUEST]=BLANK_PROFILE();
+  if(!profileName || !profiles[profileName])
+    profileName = profiles[GUEST] ? GUEST : Object.keys(profiles)[0];
+  return profileName; }
 function prof(){ return (profileName && profiles[profileName]) ? profiles[profileName] : null; }
 function saveProfiles(){ try{ localStorage.setItem('ft_profiles',JSON.stringify(profiles));
   localStorage.setItem('ft_who',profileName); }catch(e){} }
 function useProfile(name){ name=(name||'').trim().slice(0,14); if(!name) return false;
   if(!profiles[name]) profiles[name]=BLANK_PROFILE();
+  fixProfile(profiles[name]);
   profileName=name; saveProfiles(); return true; }
+// how much of everything a profile has earned
+const TOTAL_UNLOCKS = ACCS.length + COSTUMES.reduce((n,l)=>n+l.length,0);
+function unlockCount(p){ return (p.accs?p.accs.length:0)+(p.cos?p.cos.length:0); }
 function hasAcc(id){ const p=prof(); return !!p && p.accs.indexOf(id)>=0; }
 function hasCos(id){ const p=prof(); return !!p && p.cos.indexOf(id)>=0; }
 function myAccs(){ const p=prof(); return p? ACCS.filter(a=>p.accs.indexOf(a.id)>=0) : []; }
@@ -2033,7 +2283,7 @@ let world=null, levelIdx=0;
 const player={ x:0,y:2,z:0, vx:0,vy:0,vz:0, r:0.42, hh:0.9, onGround:false, facing:0, walk:0,
   standingOn:null, respawn:{x:0,y:2,z:0}, dead:false, deadT:0, swing:null, swingCd:0,
   climbing:false, climbHint:false, hasKey:false, celebrateUntil:0 };
-let lives=3, coinsLevel=0, coinsForLife=0, runTime=0, running=false;
+let lives=3, coinsLevel=0, coinsForLife=0, runTime=0, running=false, levelStartT=0;
 const GRAV=-26, JUMP=11, MOVE=7, TRAMP=21, AIR=0.72, CLIMB=6;
 const cam={ yaw:Math.PI, pitch:0.42, dist:10 };
 
@@ -2053,6 +2303,7 @@ function startLevel(idx){
   player.respawn={x:world.spawn.x,y:world.spawn.y,z:world.spawn.z};
   resetPlayerTo(world.spawn);
   coinsLevel=0; running=true; player.climbHint=false;   // re-teach the climb each tower
+  levelStartT=runTime;                                  // for this tower's own best time
   player.hasKey=false; player.celebrateUntil=0;
   const T=world.theme; gl.clearColor(T.sky[0],T.sky[1],T.sky[2],1); gl.uniform3fv(loc.uFog,T.fog);
   document.getElementById('coinPill').firstChild.textContent = T.coin+' ';
@@ -2225,6 +2476,7 @@ function postPhysics(t){
   for(const c of world.coins){ if(c.got) continue;
     if(Math.abs(player.x-c.x)<1.2 && Math.abs(player.z-c.z)<1.2 && Math.abs(player.y-c.y)<1.6){
       c.got=true; coinsLevel++; coinsForLife++; Audio_.sfx('coin');
+      const fp=prof(); if(fp) fp.fruit=(fp.fruit||0)+1;   // lifetime tally, saved at the end of the tower
       if(coinsForLife>=50){ coinsForLife-=50; lives++; Audio_.sfx('extra'); showMsg('Extra life! ❤',1400); }
       updateHUD(); } }
 
@@ -2297,8 +2549,14 @@ function tryJump(){ if(state!=='play'||!running||player.dead) return;
   if(player.onGround){ player.vy=JUMP; player.onGround=false; player.standingOn=null; Audio_.sfx('jump'); } }
 
 /* --------------------------- Level flow ------------------------------ */
+// a tower's own time, and the profile's record for it
+function bankTowerTime(){
+  const p=prof(); if(!p) return;
+  const t=runTime-levelStartT;
+  if(p.bestLvl[levelIdx]==null || t<p.bestLvl[levelIdx]) p.bestLvl[levelIdx]=t;
+  saveProfiles(); }
 function levelComplete(){
-  running=false; Audio_.sfx('level');
+  running=false; Audio_.sfx('level'); bankTowerTime();
   if(levelIdx>=2){ winGame(); return; }
   setState('level');
   const T=world.theme, nx=THEMES[levelIdx+1];
@@ -2308,6 +2566,7 @@ function levelComplete(){
 let pendingTime=null, savedThisWin=false;
 function winGame(){ running=false; setState('win'); Audio_.sfx('win'); Audio_.stopMusic();
   pendingTime=runTime; savedThisWin=false;
+  { const p=prof(); if(p && (p.best==null || runTime<p.best)){ p.best=runTime; saveProfiles(); } }
   const inp=document.getElementById('nameInput'), btn=document.getElementById('nameSave');
   let last=''; try{ last=localStorage.getItem('ft_lastName')||''; }catch(e){}
   inp.value=last||CHARACTERS[chosen].name; inp.disabled=false;
@@ -2326,7 +2585,7 @@ function saveWinName(){
   try{ localStorage.setItem('ft_lastName', nm); }catch(e){}
   inp.disabled=true; btn.disabled=true; btn.textContent='Saved ✓';
   document.getElementById('nameLabel').textContent='Nice one, '+nm+' — you\u2019re on the board! 🏆'; }
-function gameOver(){ setState('over'); Audio_.stopMusic(); }
+function gameOver(){ setState('over'); Audio_.stopMusic(); saveProfiles(); }
 function nextLevel(){ setState('play'); startLevel(levelIdx+1); if(opts.music) Audio_.startMusic(); }
 
 /* =========================================================================
@@ -2502,7 +2761,7 @@ function drawSwing(sw,t){
 /* character-select stage: model sits in the clear middle band */
 let csAng=0;
 function renderCharSelect(t){
-  gl.clearColor(0.05,0.10,0.17,1); gl.uniform3fv(loc.uFog,C(0x0d1b2a));
+  gl.clearColor(0.09,0.45,0.78,1); gl.uniform3fv(loc.uFog,C(0x2a9bf0));   // same blue as the menus
   gl.uniformMatrix4fv(loc.uView,false,M.lookAt([0,0.65,6.4],[0,-0.25,0],[0,1,0]));
   csAng+=0.012;
   // a fruit-slice pedestal
@@ -2573,15 +2832,13 @@ function setState(s){
   if(s==='leader') fillLeaderboard();
   if(s==='char') updateCharUI();
   if(s==='menu') updateMenuWho();
+  if(s==='profile'){ showNewProfile(false); updateProfileScreen(); }
 }
 function togglePause(){ if(state==='play'){ running=false; setState('pause'); }
   else if(state==='pause'){ setState('play'); running=true; } }
 
 function click(id,fn){ document.getElementById(id).addEventListener('click',()=>{ Audio_.init(); Audio_.sfx('click'); fn(); }); }
-click('beginBtn',()=>{
-  if(!prof()){ setState('profile'); updateProfileScreen();
-    showMsg('Pick a name so your unlocks get saved 💾',2200); return; }
-  setState('char'); });
+click('beginBtn',()=>{ ensureGuest(); saveProfiles(); setState('char'); });
 click('optionsBtn',()=>setState('options'));
 click('leaderBtn',()=>setState('leader'));
 click('quitBtn',()=>{ setState('quit'); Audio_.stopMusic(); try{ window.close(); }catch(e){} });
@@ -2593,11 +2850,27 @@ click('cosUp',()=>stepCostume(1));
 click('cosDown',()=>stepCostume(-1));
 click('accBtn',()=>openAccDrawer());
 click('accClose',()=>closeAccDrawer());
-click('profileBtn',()=>{ setState('profile'); updateProfileScreen(); });
-click('profBack',()=>{ setState('menu'); updateMenuWho(); });
+click('accBack',()=>closeAccDrawer());
+click('charBack',()=>setState('menu'));
+click('profileBtn',()=>{ setState('profile'); });
+click('profNew',()=>showNewProfile(true));
 click('profSave',()=>{ const v=document.getElementById('profInput').value;
-  if(useProfile(v)){ updateProfileScreen(); updateMenuWho(); showMsg('Saved! Playing as '+profileName,1500); }
+  if(useProfile(v)){ showNewProfile(false); updateProfileScreen(); updateMenuWho();
+    showMsg('Saved! Playing as '+profileName,1500); }
   else showMsg('Type a name first 🙂',1400); });
+document.getElementById('profInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); document.getElementById('profSave').click(); } });
+document.getElementById('menuProfPick').addEventListener('change',function(){
+  Audio_.init(); useProfile(this.value); Audio_.sfx('click'); updateMenuWho(); });
+
+/* ---- the bar every sub-screen wears: back on the left, home on the right ---- */
+const HOME_SVG='<svg class="homeIco" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">'
+  +'<path d="M12 3 1.5 12h3v8.5h5V15h5v5.5h5V12h3L12 3z"/></svg>';
+document.querySelectorAll('[data-home]').forEach(b=>{
+  b.innerHTML=HOME_SVG; b.setAttribute('aria-label','Main menu');
+  b.addEventListener('click',()=>{ Audio_.init(); Audio_.sfx('click');
+    closeAccDrawer(); setState('menu'); }); });
+document.querySelectorAll('[data-back]').forEach(b=>b.setAttribute('aria-label','Back'));
 click('charNext',()=>{ chosen=(chosen+1)%CHARACTERS.length; updateCharUI(); });
 click('charGo',()=>startRun());
 click('resumeBtn',()=>togglePause());
@@ -2622,7 +2895,7 @@ wireToggle('tgCheat','cheat',()=>updateHUD());
 
 function fillLeaderboard(){ const s=loadScores(), el=document.getElementById('lbList');
   if(!s.length){ el.innerHTML='<div style="opacity:.7;padding:16px">No times yet — be the first! 🏁</div>'; return; }
-  el.innerHTML=s.map((r,i)=>`<div class="lbrow ${i===0?'best':''}"><span>${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</span><span class="who">${r.name}</span><span>${fmtTime(r.time)}</span></div>`).join(''); }
+  el.innerHTML=s.map((r,i)=>`<div class="lbrow ${i===0?'best':''}"><span class="rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)}</span><span class="who">${esc(r.name)}</span><span>⏱ ${fmtTime(r.time)}</span></div>`).join(''); }
 function updateCharUI(){ const c=CHARACTERS[chosen];
   document.getElementById('charName').textContent=c.name;
   const dots=document.getElementById('charDots'); dots.innerHTML='';
@@ -2668,23 +2941,55 @@ function openAccDrawer(){
 }
 function closeAccDrawer(){ document.getElementById('accDrawer').classList.add('hidden'); }
 
-/* ---- the player profile screen ---- */
+/* ---- the Profiles screen: a card per saved player with their stats ---- */
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const bestStr=t=>t==null?'—':fmtTime(t);
+function statTile(lab,ico,val){
+  return '<div class="stat"><div class="lab">'+lab+'</div><div class="bar">'+
+    '<span class="ico">'+ico+'</span><span class="val">'+val+'</span></div></div>'; }
+function profileCard(name){
+  const p=fixProfile(profiles[name]), me=(name===profileName);
+  const towers=THEMES.map((T,i)=>statTile(T.name,T.emoji,bestStr(p.bestLvl[i]))).join('');
+  return '<div class="profCard'+(me?' on':'')+'">'
+    + '<div class="profHead">'
+    +   '<div class="profAva">'+(me?'😄':'🙂')+'</div>'
+    +   '<div class="profWhoName">'+esc(name)+'<span class="sub">'
+    +     (me?'now playing':(p.beaten?p.beaten+' win'+(p.beaten===1?'':'s'):'no wins yet'))+'</span></div>'
+    +   (me ? '<div class="profBadge">✔ Playing</div>'
+           : '<button class="btn small profPick" data-use="'+esc(name)+'">Choose</button>')
+    + '</div>'
+    + '<div class="statRow">'
+    +   statTile('Unlocks','🎁',unlockCount(p)+'/'+TOTAL_UNLOCKS)
+    +   statTile('Best Time','⏱',bestStr(p.best))
+    +   statTile('Fruit Collected','🍒',(p.fruit||0))
+    +   statTile('Towers Beaten','🏆',(p.beaten||0))
+    + '</div>'
+    + '<div class="statRow" style="margin-top:8px">'+towers+'</div>'
+    + '</div>'; }
 function updateProfileScreen(){
-  const inp=document.getElementById('profInput'); inp.value=profileName||'';
   const list=document.getElementById('profList');
   const names=Object.keys(profiles);
-  if(!names.length){ list.innerHTML='<div class="tag">No players saved yet.</div>'; return; }
-  list.innerHTML='<div class="tag" style="margin-bottom:8px">Saved players:</div>';
-  const sel=document.createElement('select'); sel.id='profPick';
-  names.forEach(n=>{ const o=document.createElement('option'); o.value=n;
-    o.textContent=n+'  ('+profiles[n].beaten+' win'+(profiles[n].beaten===1?'':'s')+')';
-    if(n===profileName) o.selected=true; sel.appendChild(o); });
-  sel.addEventListener('change',()=>{ useProfile(sel.value); Audio_.sfx('click');
-    updateProfileScreen(); updateMenuWho(); });
-  list.appendChild(sel);
+  list.innerHTML = names.length
+    ? names.map(profileCard).join('')
+    : '<div class="tag">No players saved yet — make one below!</div>';
+  list.querySelectorAll('[data-use]').forEach(b=>b.addEventListener('click',()=>{
+    useProfile(b.getAttribute('data-use')); Audio_.sfx('click');
+    updateProfileScreen(); updateMenuWho(); }));
 }
-function updateMenuWho(){ const e=document.getElementById('menuWho');
-  if(e) e.textContent = profileName ? ('playing as '+profileName+' 💛') : 'tap Player to save your unlocks'; }
+function showNewProfile(on){
+  document.getElementById('profNewRow').classList.toggle('hidden',!on);
+  document.getElementById('profNew').classList.toggle('hidden',on);
+  if(on){ const i=document.getElementById('profInput'); i.value=''; i.focus(); } }
+/* ---- the main menu's profile chip: a dropdown of players, cog for the rest ---- */
+function updateMenuWho(){
+  ensureGuest();
+  const sel=document.getElementById('menuProfPick');
+  if(sel){ sel.innerHTML='';
+    Object.keys(profiles).forEach(n=>{ const o=document.createElement('option');
+      o.value=n; o.textContent=n; if(n===profileName) o.selected=true; sel.appendChild(o); }); }
+  const e=document.getElementById('menuWho');
+  if(e){ const p=prof();
+    e.textContent = p ? ('🎁 '+unlockCount(p)+' unlocked  ·  🍒 '+(p.fruit||0)+' collected') : ''; } }
 const previewLook=currentLook;
 
 /* =========================================================================
@@ -2736,7 +3041,7 @@ requestAnimationFrame(frame);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Audio_.kick(); });
 setInterval(()=>Audio_.kick(),2000);
 
-updateMenuWho();
+ensureGuest(); saveProfiles(); updateMenuWho();
 (function intro(){
   const it=document.getElementById('introTitle'), ib=document.getElementById('introBy');
   setTimeout(()=>it.classList.add('fadeUp'),300);
