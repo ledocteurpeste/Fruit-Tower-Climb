@@ -459,7 +459,14 @@ const Audio_={
     this.master=this.ctx.createGain(); this.master.gain.value=0.5; this.master.connect(this.ctx.destination);
     this.musicGain=this.ctx.createGain(); this.musicGain.gain.value=0.18; this.musicGain.connect(this.master); },
   resume(){ if(this.ctx && this.ctx.state==='suspended') this.ctx.resume(); },
-  tone(freq,dur,type,vol,slideTo,dest){ if(!opts.sfx||!this.ctx) return;
+  // Phones park the audio clock whenever the tab loses focus or the ringer
+  // switch flips, and a parked interval never restarts itself — so poke the
+  // context awake on every gesture and put the sequencer back if it died.
+  kick(){ if(!this.ctx) return; this.resume();
+    if(this.wantMusic && opts.music && !this.seqTimer) this.startMusic(); },
+  tone(freq,dur,type,vol,slideTo,dest){ if(!this.ctx) return;
+    // music rides its own gain, so muting sound effects must not mute the music
+    if(dest===this.musicGain ? !opts.music : !opts.sfx) return;
     const o=this.ctx.createOscillator(),g=this.ctx.createGain(),t=this.ctx.currentTime;
     o.type=type||'square'; o.frequency.setValueAtTime(freq,t);
     if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30,slideTo),t+dur);
@@ -492,7 +499,7 @@ const Audio_={
     const scale=[]; for(let o=0;o<3;o++) for(const s of base) scale.push(s+o*12+root);
     this.melody=[0,2,4,2, 5,4,2,0, 3,5,7,5, 4,2,0,2].map(ix=>scale[ix%scale.length]);
     this.bpm=[128,138,120][k]||130; },
-  startMusic(){ if(!opts.music||!this.ctx) return; this.resume(); if(this.seqTimer) return;
+  startMusic(){ this.wantMusic=true; if(!opts.music||!this.ctx) return; this.resume(); if(this.seqTimer) return;
     if(!this.melody) this.setTheme(0);
     const stepMs=60000/this.bpm/2; this.step=0;
     this.seqTimer=setInterval(()=>{ if(!opts.music) return;
@@ -500,7 +507,7 @@ const Audio_={
       this.tone(f,stepMs/1000*0.9,'triangle',0.16,null,this.musicGain);
       if(this.step%4===0) this.tone(f/2,stepMs/1000*1.8,'sine',0.14,null,this.musicGain);
       this.step++; }, stepMs); },
-  stopMusic(){ if(this.seqTimer){ clearInterval(this.seqTimer); this.seqTimer=null; } }
+  stopMusic(){ this.wantMusic=false; if(this.seqTimer){ clearInterval(this.seqTimer); this.seqTimer=null; } }
 };
 
 /* =========================================================================
@@ -789,8 +796,12 @@ function drawWhole(s,f,r,top,t){
       sph(s.x+Math.cos(a)*rr, yy, s.z+Math.sin(a)*rr, r*0.045, C(0xffe9a8)); } }
   if(f.crown){ for(let k=0;k<6;k++){ const a=a0+k/6*6.2832;
       box(s.x+Math.cos(a)*r*0.30, top+0.05, s.z+Math.sin(a)*r*0.30, r*0.26,0.05,0.09, mixc(f.skin,[0,0,0],0.25), a); } }
-  if(f.calyx){ for(let k=0;k<7;k++){ const a=a0+k/7*6.2832;
-      box(s.x+Math.cos(a)*r*0.80, top+0.10, s.z+Math.sin(a)*r*0.80, r*0.52,0.10,r*0.26, C(0x4f9a3a), a, 0.30); } }
+  // a small leafy rosette by the stem. This used to be seven big flat slabs
+  // ringed round the rim, which on a wide platform read as green rectangles
+  // fencing the whole thing in.
+  if(f.calyx){ for(let k=0;k<6;k++){ const a=a0+k/6*6.2832;
+      cone(s.x+Math.cos(a)*r*0.26, top+0.07, s.z+Math.sin(a)*r*0.26,
+           r*0.07, r*0.26, C(0x4f9a3a), a, 1.5708); } }
 }
 /* a real cross-section slice: rind band, pith ring, flesh, wedges, seeds */
 function drawSlice(s,f,r,top,t){
@@ -863,6 +874,17 @@ function drawBananaSeg(s,t){
   if(s.last)  box(s.x+shake, s.y, s.z+d/2, w*0.8, s.h*0.8, 0.22, f.dot);
   if(s.timer>=0){ // crack marks while it gives way
     for(let k=0;k<3;k++) box(s.x+shake+(k-1)*w*0.22, top+0.02, s.z+(k-1)*d*0.2, 0.06,0.05,d*0.35, C(0x6a4a12), 0.4);
+  }
+  if(s.belt){ // chevrons streaming along, so it reads as a treadmill
+    const roll=(t*s.belt*0.35)%1;
+    for(let k=0;k<3;k++){ const zz=s.z-d/2+((k+roll)/3)*d;
+      for(const sx of [-1,1])
+        box(s.x+sx*w*0.17, top+0.03, zz, w*0.20, 0.05, 0.16, C(0x7a5a12), sx*0.72); }
+  }
+  if(s.slowMo){ // squashed mush puddles that bog you down
+    for(let k=0;k<4;k++){ const a=k*2.399;
+      cyl(s.x+Math.cos(a)*w*0.22, top+0.02, s.z+Math.sin(a)*d*0.26,
+          0.42, 0.05, mixc(f.flesh,[0.5,0.35,0.05],0.45)); }
   }
 }
 
@@ -1060,9 +1082,12 @@ function buildLevel(idx){
   function coinLine(x,y,z,n,dz){ for(let k=0;k<n;k++) coins.push({x, y, z:z+k*dz, got:false, ph:Math.random()*6}); }
   function chk(s){ checks.push({x:s.x,y:s.y+s.h/2+0.4,z:s.z}); }
   // long banana bridge that cracks and drops behind you
-  function bananaBridge(dx,dz,dy,segs,segLen){
+  function bananaBridge(dx,gap,dy,segs,segLen){
     cx+=dx; cy+=dy;
-    const startZ=cz+dz;
+    // `gap` is the clear space from the last platform's RIM to the first
+    // segment's near edge — measuring from its centre buried the bridge
+    // several units inside whatever platform came before it
+    const startZ=cz+lastR+gap+segLen/2;
     for(let k=0;k<segs;k++){
       const z=startZ+k*segLen;
       solids.push({type:'box',crumb:true,x:cx,y:cy,z:z,w:3.4,h:1.0,d:segLen,
@@ -1081,6 +1106,34 @@ function buildLevel(idx){
     const s=Object.assign({type:'box',hub:true,x:cx,y:cy,z:cz,w:side,h:1.2,d:side,
       c:C(0xffe1b0),bx:cx,by:cy,bz:cz}, extra||{});
     solids.push(s); return s;
+  }
+  // A big square deck — same footprint as the checkpoint plaza — with a row of
+  // spikes embedded across its full width. There is no walking round the row,
+  // so the only way past is to jump it.
+  function spikeDeck(gap,dy,side,rowDepth){
+    const rd=rowDepth||2.4;
+    const s=hub(0,gap,dy,side,{c:C(0xffd9a8),spikeDeck:true});
+    const top=s.y+s.h/2;
+    spikes.push({x:s.x, y:top, z:s.z, w:side, d:rd, r:0.52,
+                 n:Math.round(side/1.7), h:1.05});
+    // one coin on the run-up, one on the landing, to sell the jump
+    coins.push({x:s.x-side*0.20, y:top+0.78, z:s.z-rd*1.7, got:false, ph:1});
+    coins.push({x:s.x+side*0.20, y:top+0.78, z:s.z+rd*1.7, got:false, ph:2});
+    return s;
+  }
+  // A banana-skin runway. `belt` carries you along it like a treadmill;
+  // `slowMo` scales how fast you can move on it, for a sluggish mushy stretch.
+  function bananaRun(gap,dy,segs,segLen,extra){
+    cz += lastR + gap + segLen/2;
+    const startZ=cz;
+    for(let k=0;k<segs;k++){
+      const z=startZ+k*segLen;
+      solids.push(Object.assign({type:'box',banana:true,x:cx,y:cy,z:z,
+        w:4.4,h:1.0,d:segLen,c:FRUIT.banana.skin,bx:cx,by:cy,bz:z,
+        first:k===0,last:k===segs-1}, extra||{}));
+    }
+    cz=startZ+(segs-1)*segLen; lastR=segLen/2;
+    return {x:cx,y:cy,z:cz};
   }
   // A chocolate-bar wall standing straight across the route. You hop at its
   // face and hold forward: the character hauls themselves up hand over hand and
@@ -1129,12 +1182,8 @@ function buildLevel(idx){
     s=hop(0, 2.8, 1.4, 2.4, {axis:'y',amp:3.2,mspd:0.5,ph:0}); coinsOn(s,2);
     s=hop(0, 2.8, 1.4, 3.0); s.fruit='lollipop'; coinsOn(s,2); chk(s);
 
-    // the spike deck is deliberately far bigger, so there's room to walk around
-    s=hop(0, 3.0, 1.4, 6.6);
-    spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+2.0,w:6.2,d:2.2,r:1.25});
-    coins.push({x:s.x-3.6,y:s.y+s.h/2+0.78,z:s.z-2.2,got:false,ph:1});
-    coins.push({x:s.x+3.6,y:s.y+s.h/2+0.78,z:s.z-2.2,got:false,ph:2});
-    coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z-3.4,got:false,ph:3});
+    // a plaza-sized deck with a spike row straight across it — jump the row
+    s=spikeDeck(3.0, 1.4, 12.8, 2.4);
     s=hop(0, 3.0, 1.5, 2.7, {spin:0.55}); coinsOn(s,2);
     s=hop(0, 2.8, 1.4, 4.6); coinsOn(s,3); chk(s);
     const b=bananaBridge(0, 3.0, 1.4, 6, 3.0);
@@ -1161,12 +1210,17 @@ function buildLevel(idx){
     s=hop(0, 2.4, 4.6, 2.6);      coinsOn(s,2); chk(s);
     s=hop(-1.6, 2.8, 1.4, 3.4, {spin:0.8}); coinsOn(s,3);
     s=hop(1.0, 2.6, 1.5, 2.2, {axis:'y',amp:1.5,mspd:1.1,ph:0}); coinsOn(s,2);
-    s=hop(0, 3.0, 1.5, 6.2);
-    spikes.push({x:s.x-2.6,y:s.y+s.h/2+0.9,z:s.z,w:2.2,d:4.4,r:1.20});
-    spikes.push({x:s.x+2.6,y:s.y+s.h/2+0.9,z:s.z,w:2.2,d:4.4,r:1.20});
-    coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:3});
-    coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z-2.6,got:false,ph:4});
-    const b=bananaBridge(0, 3.0, 1.4, 5, 3.0); cz=b.z;
+    s=spikeDeck(3.0, 1.5, 12.8, 2.4);
+
+    // ---- a banana treadmill that hurries you along ----
+    const tm=bananaRun(2.6, 1.2, 4, 3.2, {belt:5.2});
+    cz=tm.z; coinLine(tm.x, tm.y+1.28, tm.z-3.2, 3, 3.2);
+    s=hop(0, 2.6, 1.3, 3.0); coinsOn(s,2); chk(s);
+    // ---- and a squashed-banana stretch that bogs you down ----
+    const sl=bananaRun(2.6, 1.2, 4, 3.2, {slowMo:0.42});
+    cz=sl.z; coinLine(sl.x, sl.y+1.28, sl.z-3.2, 3, 3.2);
+
+    const b=bananaBridge(0, 2.8, 1.3, 5, 3.0); cz=b.z;
     s=hop(0, 2.8, 1.4, 2.8); coinsOn(s,2); chk(s);
     const g=hop(0, 2.8, 1.5, 4.8);
     goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.4};
@@ -1189,11 +1243,7 @@ function buildLevel(idx){
     coins.push({x:s.x+2.2,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:2});
     s=hop(-1.6, 2.8, 1.4, 2.6, {spin:1.0}); coinsOn(s,2);
     s=hop(1.2, 2.6, 1.5, 2.2, {axis:'y',amp:1.7,mspd:1.2,ph:0}); coinsOn(s,2);
-    s=hop(0, 3.0, 1.5, 6.8);
-    spikes.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z+2.2,w:6.4,d:2.2,r:1.30});
-    coins.push({x:s.x-3.8,y:s.y+s.h/2+0.78,z:s.z-2.4,got:false,ph:4});
-    coins.push({x:s.x+3.8,y:s.y+s.h/2+0.78,z:s.z-2.4,got:false,ph:5});
-    coins.push({x:s.x,y:s.y+s.h/2+0.78,z:s.z-3.6,got:false,ph:6});
+    s=spikeDeck(3.0, 1.5, 12.8, 2.6);
     const b=bananaBridge(0, 3.0, 1.4, 7, 3.0); cz=b.z;
     s=hop(0, 2.8, 1.4, 3.0); coinsOn(s,3); chk(s);
     const g=hop(0, 2.8, 1.5, 5.2);
@@ -1304,8 +1354,12 @@ function physics(dt,t,inx,inz){
   if(player.swing){ swingStep(dt,inx,inz); return; }
 
   const ctrl=player.onGround?1:AIR, accel=player.onGround?18:9;
-  player.vx += ((inx*MOVE)-player.vx)*Math.min(1,accel*dt)*ctrl;
-  player.vz += ((inz*MOVE)-player.vz)*Math.min(1,accel*dt)*ctrl;
+  // a sluggish surface caps how fast you can get moving on it
+  const spd = (so && so.slowMo) ? MOVE*so.slowMo : MOVE;
+  player.vx += ((inx*spd)-player.vx)*Math.min(1,accel*dt)*ctrl;
+  player.vz += ((inz*spd)-player.vz)*Math.min(1,accel*dt)*ctrl;
+  // a treadmill carries you along whether or not you are pushing
+  if(so && so.belt) player.z += so.belt*dt;
 
   for(const f of world.fans){ const dx=player.x-f.x,dz=player.z-f.z;
     if(dx*dx+dz*dz < f.r*f.r && player.y>f.y-1 && player.y<f.y+f.height){
@@ -1377,8 +1431,13 @@ function postPhysics(t){
   const sp=Math.hypot(player.vx,player.vz);
   if(sp>0.6){ player.facing=Math.atan2(player.vx,player.vz); player.walk+=sp*0.055; }
 
-  for(const k of world.spikes){ if(Math.abs(player.x-k.x)<k.w/2+player.r-0.05 &&
-      Math.abs(player.z-k.z)<k.d/2+player.r-0.05 && Math.abs(player.y-k.y)<1.0){ die(); return; } }
+  // Only the thorn row itself hurts, and only if you failed to clear it: the
+  // box used to be the deck's whole danger footprint plus the player's radius,
+  // which killed you standing nowhere near a spike.
+  for(const k of world.spikes){ const th=k.h||1.05;
+    if(Math.abs(player.x-k.x) < k.w/2 &&
+       Math.abs(player.z-k.z) < k.d/2-0.15 &&
+       (player.y-player.hh) < k.y+th*0.65){ die(); return; } }
 
   if(!player.swing && player.swingCd<=0 && player.vy<7){
     for(const sw of world.swings){ const h=swingHandle(sw);
@@ -1479,7 +1538,7 @@ function render(t){
     if(s.dead && s.y<-14) continue;
     if(s.nodraw) continue;              // collision-only helpers (bow, cabin)
     if(s.boat){ drawBoat(s,t); continue; }
-    if(s.crumb){ drawBananaSeg(s,t); continue; }
+    if(s.crumb||s.banana){ drawBananaSeg(s,t); continue; }
     if(s.wall){ // a wall of stacked crates to bounce over
       box(s.x,s.y,s.z,s.w,s.h,s.d,C(0x8f5a2a));
       for(let r2=0;r2<3;r2++) for(let c2=0;c2<3;c2++)
@@ -1490,15 +1549,17 @@ function render(t){
     box(s.x,s.y,s.z,s.w,s.h,s.d, s.c||C(0xb4762f));
   }
 
-  /* ---- spikes: single faceted pyramid each, in a tight cluster of 4 ---- */
+  /* ---- spikes: a row of thorns set into the deck, right across it ---- */
   for(const k of world.spikes){
-    // always a 2x2 cluster, sized to fit inside the platform's danger zone
-    const cw=Math.min(k.w,k.d)*0.42, r=(k.r||1.2)*0.5;
-    for(const ix of [-1,1]) for(const iz of [-1,1]){
-      const px=k.x+ix*cw*0.5, pz=k.z+iz*cw*0.5;
-      cyl(px,k.y-0.78,pz, r*1.20, 0.44, C(0x6b7684));        // base plate
-      cyl(px,k.y-0.54,pz, r*1.05, 0.22, C(0xff4d5e));        // red warning band
-      pyramid(px,k.y+0.18,pz, r*1.30, 1.15, C(0xf2f5fb), 0.7854); // one sharp faceted thorn (half height too)
+    const n=k.n||4, th=k.h||1.05, r=k.r||0.52, step=k.w/n;
+    // the slot the row is bedded into, plus a hazard stripe either side of it
+    box(k.x, k.y+0.03, k.z, k.w, 0.10, k.d, C(0x8a6a4a));
+    box(k.x, k.y+0.05, k.z-k.d/2+0.16, k.w, 0.06, 0.22, C(0xff4d5e));
+    box(k.x, k.y+0.05, k.z+k.d/2-0.16, k.w, 0.06, 0.22, C(0xff4d5e));
+    for(let i=0;i<n;i++){
+      const px=k.x-k.w/2+(i+0.5)*step;
+      cyl(px, k.y+0.08, k.z, r*1.10, 0.16, C(0x6b7684));      // collar, flush with the deck
+      pyramid(px, k.y+0.10+th/2, k.z, r*1.05, th, C(0xf2f5fb), 0.7854);
     }
   }
 
@@ -1774,6 +1835,13 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/* Keep the audio alive: a phone suspends the context on any interruption (tab
+   switch, lock screen, ringer switch) and it only ever resumes from a gesture. */
+['pointerdown','touchstart','keydown'].forEach(e=>
+  addEventListener(e,()=>{ Audio_.init(); Audio_.kick(); },{passive:true}));
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Audio_.kick(); });
+setInterval(()=>Audio_.kick(),2000);
 
 (function intro(){
   const it=document.getElementById('introTitle'), ib=document.getElementById('introBy');
