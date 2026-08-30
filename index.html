@@ -607,11 +607,18 @@ function drawChar(ch, x,y,z, face, walk, airborne, t, climbing){
     B( 0.46, 0.34-reach, 0.30, 0.22,0.62,0.22, sleeve);
     drawGlove(B,S, -0.47, 0.70+reach, 0.34, glove, -1);
     drawGlove(B,S,  0.47, 0.70-reach, 0.34, glove,  1);
+  } else if(airborne){
+    // one arm thrown up on a jump, the other tucked in
+    B(-0.52,-0.10+bob, 0.14, 0.22,0.62,0.22, sleeve, 0.22);
+    B( 0.50, 0.30+bob, 0.02, 0.22,0.62,0.22, sleeve,-0.18);
+    drawGlove(B,S, -0.55,-0.48+bob, 0.18, glove, -1);
+    drawGlove(B,S,  0.54, 0.70+bob, 0.02, glove,  1);
   } else {
-    B(-0.52,-0.12+bob, armSw*0.5, 0.22,0.62,0.22, sleeve);
-    B( 0.52,-0.12+bob,-armSw*0.5, 0.22,0.62,0.22, sleeve);
-    drawGlove(B,S, -0.53,-0.50+bob, armSw*0.5, glove, -1);
-    drawGlove(B,S,  0.53,-0.50+bob,-armSw*0.5, glove,  1);
+    // arms swing opposite the legs as they walk
+    B(-0.52,-0.12+bob, armSw*0.62, 0.22,0.62,0.22, sleeve, armSw*0.30);
+    B( 0.52,-0.12+bob,-armSw*0.62, 0.22,0.62,0.22, sleeve,-armSw*0.30);
+    drawGlove(B,S, -0.53,-0.50+bob, armSw*0.78, glove, -1);
+    drawGlove(B,S,  0.53,-0.50+bob,-armSw*0.78, glove,  1);
   }
 
   /* neck + head */
@@ -862,6 +869,62 @@ function drawFruitTop(s,t){
 }
 
 /* long banana bridge segment (box collision, banana look) */
+/* a log lying across the route: a round timber with sawn end-grain */
+function drawLog(s){
+  const r=s.h/2, half=s.w/2;
+  cyl(s.x, s.y, s.z, r, s.w, C(0x8a5a30), 0, 1.5708);           // the timber
+  for(const sgn of [-1,1]){                                      // sawn ends
+    cyl(s.x+sgn*(half+0.01), s.y, s.z, r*0.97, 0.06, C(0xc79a63), 0, 1.5708);
+    cyl(s.x+sgn*(half+0.04), s.y, s.z, r*0.55, 0.05, C(0xb58450), 0, 1.5708); }
+  // bark strips along the top so the round shape reads at a glance
+  for(let k=-1;k<=1;k++)
+    cyl(s.x, s.y+r*0.80, s.z+k*r*0.42, 0.05, s.w*0.94, C(0x6d431f), 0, 1.5708);
+}
+/* a square wafer pad — the crumbling ones look identical until they crack */
+function drawPad(s,t){
+  const top=s.y+s.h/2, shake=s.timer>=0 ? Math.sin(t*70)*0.06 : 0;
+  const base=C(0xe8cfa0), face=C(0xf7e6c4);
+  box(s.x+shake, s.y, s.z, s.w, s.h, s.d, s.timer>=0? mixc(base,[1,0.45,0.3],0.40) : base);
+  box(s.x+shake, top-0.04, s.z, s.w*0.88, 0.08, s.d*0.88, s.timer>=0? mixc(face,[1,0.5,0.35],0.35) : face);
+  // a waffle grid pressed into the surface
+  for(let k=-1;k<=1;k++){
+    box(s.x+shake, top+0.02, s.z+k*s.d*0.26, s.w*0.84, 0.04, 0.07, C(0xd8b47c));
+    box(s.x+shake+k*s.w*0.26, top+0.02, s.z, 0.07, 0.04, s.d*0.84, C(0xd8b47c)); }
+  if(s.timer>=0) for(let k=0;k<3;k++)                            // it's going!
+    box(s.x+shake+(k-1)*s.w*0.20, top+0.06, s.z+(k-1)*s.d*0.18, 0.07,0.05,s.d*0.42, C(0x6a4a12), 0.45);
+}
+/* a treadmill: its own colour, with big chevrons streaming the way it carries you */
+function drawBelt(s,t){
+  const top=s.y+s.h/2, dir=Math.sign(s.belt)||1;
+  const A=world.theme.accent;
+  box(s.x, s.y, s.z, s.w, s.h, s.d, mixc(A,[0,0,0],0.45));       // dark frame
+  box(s.x, top-0.05, s.z, s.w*0.90, 0.12, s.d*0.96, mixc(A,[0,0,0],0.15));
+  // rollers peeking out either end
+  for(const sgn of [-1,1]) cyl(s.x, s.y+0.10, s.z+sgn*s.d*0.48, 0.18, s.w*0.92, C(0x55606e), 0, 1.5708);
+  // arrows: two per segment, scrolling along so the direction is unmistakable
+  const roll=(t*1.5)%1;
+  for(let k=0;k<2;k++){
+    const zz = s.z - s.d/2 + (((k+roll)/2)*s.d);
+    for(const sgn of [-1,1])
+      box(s.x+sgn*s.w*0.16, top+0.06, zz, s.w*0.30, 0.05, 0.20,
+          C(0xfff2a8), sgn*dir*0.72);
+    // shaft trails BEHIND the chevron head, so it reads as an arrow not a tick
+    box(s.x, top+0.06, zz-dir*0.32, 0.20, 0.05, 0.50, C(0xfff2a8));
+  }
+}
+/* the sluggish stretch: sticky dark goo you wade through */
+function drawSlowRun(s,t){
+  const top=s.y+s.h/2;
+  box(s.x, s.y, s.z, s.w, s.h, s.d, C(0x7a6a32));
+  box(s.x, top-0.05, s.z, s.w*0.92, 0.12, s.d*0.96, C(0x9c8a3e));
+  for(let k=0;k<5;k++){ const a=k*2.399;
+    cyl(s.x+Math.cos(a)*s.w*0.24, top+0.03, s.z+Math.sin(a)*s.d*0.28,
+        0.46+((k%2)*0.14), 0.06, C(0x6d5c26)); }
+  // slow, sagging bubbles so it reads as thick rather than just dark
+  for(let k=0;k<3;k++){ const ph=t*0.7+k*2.1;
+    sph(s.x+Math.sin(ph)*s.w*0.22, top+0.06+Math.abs(Math.sin(ph*1.3))*0.05,
+        s.z+Math.cos(ph*0.8)*s.d*0.26, 0.15, C(0xc4b25e), 0.10); }
+}
 function drawBananaSeg(s,t){
   const f=FRUIT.banana, w=s.w, d=s.d, top=s.y+s.h/2;
   const shake=s.timer>=0 ? Math.sin(t*60)*0.05 : 0;
@@ -874,17 +937,6 @@ function drawBananaSeg(s,t){
   if(s.last)  box(s.x+shake, s.y, s.z+d/2, w*0.8, s.h*0.8, 0.22, f.dot);
   if(s.timer>=0){ // crack marks while it gives way
     for(let k=0;k<3;k++) box(s.x+shake+(k-1)*w*0.22, top+0.02, s.z+(k-1)*d*0.2, 0.06,0.05,d*0.35, C(0x6a4a12), 0.4);
-  }
-  if(s.belt){ // chevrons streaming along, so it reads as a treadmill
-    const roll=(t*s.belt*0.35)%1;
-    for(let k=0;k<3;k++){ const zz=s.z-d/2+((k+roll)/3)*d;
-      for(const sx of [-1,1])
-        box(s.x+sx*w*0.17, top+0.03, zz, w*0.20, 0.05, 0.16, C(0x7a5a12), sx*0.72); }
-  }
-  if(s.slowMo){ // squashed mush puddles that bog you down
-    for(let k=0;k<4;k++){ const a=k*2.399;
-      cyl(s.x+Math.cos(a)*w*0.22, top+0.02, s.z+Math.sin(a)*d*0.26,
-          0.42, 0.05, mixc(f.flesh,[0.5,0.35,0.05],0.45)); }
   }
 }
 
@@ -971,32 +1023,40 @@ function drawBoat(s,t){
   const x=s.x, y=s.y, z=s.z, L=s.w, Bm=s.d, h=s.h;   // L runs along X, Bm across Z
   const HULL=C(0xf2f5f8), NAVY=C(0x1f3a63), TEAK=C(0xc98b52), GLASS=C(0x2e4d6b), TRIM=C(0xd8dee6);
   const bow=x+L*0.5, stern=x-L*0.5;
-  box(x,y,z, L,h,Bm, HULL, 0, rock);
-  box(x,y-h*0.34,z, L*1.005,h*0.26,Bm*1.01, NAVY, 0, rock);
-  box(x,y-h*0.54,z, L*0.98,h*0.18,Bm*0.96, C(0x16233a), 0, rock);
-  box(x,y+h*0.50,z, L*0.96,0.16,Bm*0.94, TEAK, 0, rock);
-  box(x,y+h*0.46,z, L*0.99,0.30,Bm*1.005, TRIM, 0, rock);
+  // Rock the hull as ONE rigid body. Handing every part the same roll angle
+  // spun each about its own centre, so parts far from the middle -- the bow
+  // slabs most of all -- sheared out of the hull as it rolled.
+  const cr=Math.cos(rock), sr=Math.sin(rock);
+  const RB=(px,py)=>[x+(px-x)*cr-(py-y)*sr, y+(px-x)*sr+(py-y)*cr];
+  const B_=(px,py,pz,sx,sy,sz,c,ry)=>{const q=RB(px,py); box(q[0],q[1],pz,sx,sy,sz,c,ry||0,rock);};
+  const Cy_=(px,py,pz,r,hh2,c)=>{const q=RB(px,py); cyl(q[0],q[1],pz,r,hh2,c,0,rock);};
+  B_(x,y,z, L,h,Bm, HULL);
+  B_(x,y-h*0.34,z, L*1.005,h*0.26,Bm*1.01, NAVY);
+  B_(x,y-h*0.54,z, L*0.98,h*0.18,Bm*0.96, C(0x16233a));
+  B_(x,y+h*0.50,z, L*0.96,0.16,Bm*0.94, TEAK);
+  B_(x,y+h*0.46,z, L*0.99,0.30,Bm*1.005, TRIM);
   // raked bow at +X
   for(let k=0;k<5;k++){ const u=(k+1)/5;
-    box(bow-L*0.02+u*Bm*0.30, y+h*(0.10+0.06*k), z, Bm*0.34, h*(0.80-0.10*k), Bm*(0.86-0.16*k), HULL, 0, rock); }
+    B_(bow-L*0.02+u*Bm*0.30, y+h*(0.10+0.06*k), z, Bm*0.34, h*(0.80-0.10*k), Bm*(0.86-0.16*k), HULL); }
   // superstructure toward the stern, and pushed to the far (-Z) side so the
   // near deck the player starts on stays completely clear
   const sx0=x-L*0.20, sz0=z-Bm*0.24;
-  box(sx0, y+h*0.50+0.85, sz0, L*0.40,1.7,Bm*0.42, HULL, 0, rock);
-  for(let k=-2;k<=2;k++) box(sx0+k*L*0.075, y+h*0.50+1.05, sz0+Bm*0.21, L*0.055,0.62,0.10, GLASS, 0, rock);
-  box(sx0-L*0.20, y+h*0.50+1.05, sz0, 0.10,0.62,Bm*0.36, GLASS, 0, rock);
-  box(sx0, y+h*0.50+1.95, sz0, L*0.32,0.36,Bm*0.34, TRIM, 0, rock);
+  B_(sx0, y+h*0.50+0.85, sz0, L*0.40,1.7,Bm*0.42, HULL);
+  for(let k=-2;k<=2;k++) B_(sx0+k*L*0.075, y+h*0.50+1.05, sz0+Bm*0.21, L*0.055,0.62,0.10, GLASS);
+  B_(sx0-L*0.20, y+h*0.50+1.05, sz0, 0.10,0.62,Bm*0.36, GLASS);
+  B_(sx0, y+h*0.50+1.95, sz0, L*0.32,0.36,Bm*0.34, TRIM);
   for(const dx2 of [-1,1]) for(const dz2 of [-1,1])
-    cyl(sx0+dx2*L*0.14, y+h*0.50+2.30, sz0+dz2*Bm*0.13, 0.05,0.62, TRIM, 0, rock);
-  box(sx0, y+h*0.50+2.62, sz0, L*0.30,0.10,Bm*0.32, HULL, 0, rock);
-  cyl(sx0-L*0.03, y+h*0.50+3.30, sz0, 0.08, 1.4, TRIM, 0, rock);
-  box(sx0-L*0.03, y+h*0.50+4.00, sz0, 1.1,0.10,0.28, TRIM, t*1.6, rock);
+    Cy_(sx0+dx2*L*0.14, y+h*0.50+2.30, sz0+dz2*Bm*0.13, 0.05,0.62, TRIM);
+  B_(sx0, y+h*0.50+2.62, sz0, L*0.30,0.10,Bm*0.32, HULL);
+  Cy_(sx0-L*0.03, y+h*0.50+3.30, sz0, 0.08, 1.4, TRIM);
+  B_(sx0-L*0.03, y+h*0.50+4.00, sz0, 1.1,0.10,0.28, TRIM, t*1.6);
   // rail along the far side and the stern only — the near side is left open to jump from
-  for(let k=0;k<11;k++) cyl(stern+L*0.06+k*L*0.088, y+h*0.50+0.42, z-Bm*0.46, 0.045,0.85, TRIM, 0, rock);
-  box(x, y+h*0.50+0.84, z-Bm*0.46, L*0.92,0.06,0.06, TRIM, 0, rock);
-  for(let k=0;k<4;k++) cyl(stern+L*0.03, y+h*0.50+0.42, z-Bm*0.30+k*Bm*0.20, 0.045,0.85, TRIM, 0, rock);
+  for(let k=0;k<11;k++) Cy_(stern+L*0.06+k*L*0.088, y+h*0.50+0.42, z-Bm*0.46, 0.045,0.85, TRIM);
+  B_(x, y+h*0.50+0.84, z-Bm*0.46, L*0.92,0.06,0.06, TRIM);
+  for(let k=0;k<4;k++) Cy_(stern+L*0.03, y+h*0.50+0.42, z-Bm*0.30+k*Bm*0.20, 0.045,0.85, TRIM);
   // deck details, all kept away from the launch side
-  tor(stern+L*0.10, y+h*0.50+0.55, z-Bm*0.30, 0.55, C(0xff4d4d), 0, 1.5708);
+  const ring=RB(stern+L*0.10, y+h*0.50+0.55);
+  tor(ring[0], ring[1], z-Bm*0.30, 0.55, C(0xff4d4d), 0, 1.5708);
 }
 
 /* ---- splash: droplets plus expanding surface rings ---- */
@@ -1121,6 +1181,41 @@ function buildLevel(idx){
     coins.push({x:s.x+side*0.20, y:top+0.78, z:s.z+rd*1.7, got:false, ph:2});
     return s;
   }
+  // A wide ramp of logs lying across the route, each one a step up from the
+  // last: hop log to log to gain height, then jump off the top one to the next
+  // fruit platform as normal.
+  function logClimb(gap,rise,steps,r,len){
+    let last=null;
+    for(let k=0;k<steps;k++){
+      cz += (k===0 ? lastR+r+gap : r*2+1.35);
+      cy += rise;
+      last={type:'box',log:true,x:cx,y:cy,z:cz,w:len,h:r*2,d:r*2,bx:cx,by:cy,bz:cz};
+      solids.push(last);
+      coins.push({x:cx, y:cy+r+0.85, z:cz, got:false, ph:k*1.3});
+    }
+    lastR=r; return last;
+  }
+  // Two columns of square pads. One column holds the whole way; the other gives
+  // way almost the instant you stand on it. Which side is safe is drawn at
+  // random every time the tower is built, so it cannot be memorised — and both
+  // sides look identical, so the only tell is the crack as it starts to go.
+  function twinColumns(gap,dy,rows,side,spread){
+    const safeLeft = Math.random() < 0.5;
+    for(let k=0;k<rows;k++){
+      cz += (k===0 ? lastR+side/2+gap : side+1.5);
+      cy += dy;
+      for(const sgn of [-1,1]){
+        const solid = (sgn<0) === safeLeft;
+        const px = cx+sgn*spread;
+        const s={type:'box',pad:true,x:px,y:cy,z:cz,w:side,h:1.0,d:side,
+                 bx:px,by:cy,bz:cz};
+        if(!solid){ s.crumb=true; s.quick=true; s.timer=-1; s.fall=0; }
+        solids.push(s);
+      }
+      coins.push({x:cx+(safeLeft?-spread:spread), y:cy+1.5, z:cz, got:false, ph:k});
+    }
+    lastR=side/2; return {x:cx,y:cy,z:cz,safeLeft};
+  }
   // A banana-skin runway. `belt` carries you along it like a treadmill;
   // `slowMo` scales how fast you can move on it, for a sluggish mushy stretch.
   function bananaRun(gap,dy,segs,segLen,extra){
@@ -1210,6 +1305,15 @@ function buildLevel(idx){
     s=hop(0, 2.4, 4.6, 2.6);      coinsOn(s,2); chk(s);
     s=hop(-1.6, 2.8, 1.4, 3.4, {spin:0.8}); coinsOn(s,3);
     s=hop(1.0, 2.6, 1.5, 2.2, {axis:'y',amp:1.5,mspd:1.1,ph:0}); coinsOn(s,2);
+
+    // ---- a wide ramp of five logs to hop up ----
+    logClimb(2.4, 1.55, 5, 0.9, 10.0);
+    s=hop(0, 2.6, 1.2, 3.4); coinsOn(s,2); chk(s);
+
+    // ---- two columns of pads: one side holds, the other drops away ----
+    twinColumns(2.6, 1.2, 4, 3.2, 2.6);
+    s=hop(0, 2.6, 1.2, 3.4); coinsOn(s,2); chk(s);
+
     s=spikeDeck(3.0, 1.5, 12.8, 2.4);
 
     // ---- a banana treadmill that hurries you along ----
@@ -1237,12 +1341,17 @@ function buildLevel(idx){
     coinLine(s.x, s.y+2.2, s.z+5.0, 3, 1.6);
     cz=s.z+13.5; cy=s.y+1.0; lastR=0;
     s=disc(0, 0, 0, 4.0); coinsOn(s,3); chk(s);
+    // (the down-draught fan that used to sit here has been taken out)
     s=hop(1.6, 2.6, 0.6, 3.2);
-    fans.push({x:s.x,y:s.y+s.h/2+0.9,z:s.z,r:2.1,power:28,dir:-1,height:8});
     coins.push({x:s.x-2.2,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:1});
     coins.push({x:s.x+2.2,y:s.y+s.h/2+0.78,z:s.z,got:false,ph:2});
     s=hop(-1.6, 2.8, 1.4, 2.6, {spin:1.0}); coinsOn(s,2);
     s=hop(1.2, 2.6, 1.5, 2.2, {axis:'y',amp:1.7,mspd:1.2,ph:0}); coinsOn(s,2);
+
+    // ---- another pair of pad columns, rolled fresh for this tower ----
+    twinColumns(2.6, 1.2, 5, 3.2, 2.6);
+    s=hop(0, 2.6, 1.2, 3.4); coinsOn(s,2); chk(s);
+
     s=spikeDeck(3.0, 1.5, 12.8, 2.6);
     const b=bananaBridge(0, 3.0, 1.4, 7, 3.0); cz=b.z;
     s=hop(0, 2.8, 1.4, 3.0); coinsOn(s,3); chk(s);
@@ -1337,7 +1446,7 @@ function updateDynamics(dt,t){
     if(s.spin){ s.pAng=s.ang; s.ang+=s.spin*dt; }
     if(s.crumb){
       if(s.timer>=0 && !s.dead){ s.timer+=dt;
-        if(s.timer>0.42){ s.dead=true; s.fall=0; Audio_.sfx('crack'); } }
+        if(s.timer > (s.quick?0.20:0.42)){ s.dead=true; s.fall=0; Audio_.sfx('crack'); } }
       if(s.dead){ s.fall+=dt; s.y=s.by-0.5*30*s.fall*s.fall; }
     }
   }
@@ -1538,6 +1647,10 @@ function render(t){
     if(s.dead && s.y<-14) continue;
     if(s.nodraw) continue;              // collision-only helpers (bow, cabin)
     if(s.boat){ drawBoat(s,t); continue; }
+    if(s.log){ drawLog(s); continue; }
+    if(s.pad){ drawPad(s,t); continue; }
+    if(s.belt){ drawBelt(s,t); continue; }
+    if(s.slowMo){ drawSlowRun(s,t); continue; }
     if(s.crumb||s.banana){ drawBananaSeg(s,t); continue; }
     if(s.wall){ // a wall of stacked crates to bounce over
       box(s.x,s.y,s.z,s.w,s.h,s.d,C(0x8f5a2a));
@@ -1552,10 +1665,13 @@ function render(t){
   /* ---- spikes: a row of thorns set into the deck, right across it ---- */
   for(const k of world.spikes){
     const n=k.n||4, th=k.h||1.05, r=k.r||0.52, step=k.w/n;
-    // the slot the row is bedded into, plus a hazard stripe either side of it
+    // The slot the row is bedded into, plus a hazard stripe either side. The
+    // stripes used to end level with the slot's top face, so the two fought
+    // for the same pixels and flickered as the camera moved; they now sit
+    // clearly above it.
     box(k.x, k.y+0.03, k.z, k.w, 0.10, k.d, C(0x8a6a4a));
-    box(k.x, k.y+0.05, k.z-k.d/2+0.16, k.w, 0.06, 0.22, C(0xff4d5e));
-    box(k.x, k.y+0.05, k.z+k.d/2-0.16, k.w, 0.06, 0.22, C(0xff4d5e));
+    box(k.x, k.y+0.13, k.z-k.d/2+0.16, k.w, 0.05, 0.22, C(0xff4d5e));
+    box(k.x, k.y+0.13, k.z+k.d/2-0.16, k.w, 0.05, 0.22, C(0xff4d5e));
     for(let i=0;i<n;i++){
       const px=k.x-k.w/2+(i+0.5)*step;
       cyl(px, k.y+0.08, k.z, r*1.10, 0.16, C(0x6b7684));      // collar, flush with the deck
