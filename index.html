@@ -107,9 +107,19 @@
   /* the scrolling area below the bar */
   .sbody{ flex:1; width:100%; min-height:0; overflow-y:auto; touch-action:pan-y;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
+    /* safe centring: when the content is taller than the screen this falls back
+       to aligning at the top, so nothing is ever clipped off above the fold */
+    justify-content:safe center;
     padding:74px 20px 22px; }
+  .sbody > *{ flex-shrink:0; }
   .sbody.top{ justify-content:flex-start; }
 
+  /* the wordmark. It is sized by height so it never crowds a short landscape
+     screen, and drops a soft shadow so it lifts off the blue. */
+  .gamelogo{ display:block; width:min(660px,86vw); height:auto;
+    max-height:min(27vh,178px); margin:0 auto;
+    filter:drop-shadow(0 10px 14px rgba(0,0,0,.35)); }
+  #introTitle .gamelogo{ max-height:min(38vh,240px); width:min(720px,90vw); }
   h1.logo{ font-size:clamp(38px,9.4vw,80px); font-weight:900; line-height:1; text-transform:uppercase;
     background:linear-gradient(#fff6b0,#ffd451 46%,#ff9c2e);
     -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -345,6 +355,11 @@
   #nameInput:disabled{ background:#d8dee4; color:#6a7580; }
   #nameSave{ margin:0; }
 
+  /* a very short landscape screen: the buttons matter more than the blurb */
+  @media (max-height: 430px){
+    .gamelogo{ max-height:80px; width:min(420px,66vw); }
+    #mainMenu .tag{ display:none; }
+  }
   @media (max-height: 620px){
     h1.logo{ font-size:clamp(25px,7vw,44px); }
     .logo .sub{ font-size:.3em; letter-spacing:5px; margin-top:2px; }
@@ -390,13 +405,133 @@
 <div id="menuBG" class="hidden"></div>
 
 <div id="intro">
-  <h1 class="logo" id="introTitle">🍒 FRUIT<br>TOWER 🫐<span class="sub">C L I M B</span></h1>
+  <div id="introTitle">
+  <svg class="gamelogo" viewBox="0 0 840 250" role="img" aria-label="Fruit Tower Climb">
+    <defs>
+      <linearGradient id="lgGold-i" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff09a"/><stop offset=".38" stop-color="#ffcb32"/>
+        <stop offset=".54" stop-color="#fb9d10"/><stop offset="1" stop-color="#e0700a"/>
+      </linearGradient>
+      <linearGradient id="lgBan-i" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff7a5c"/><stop offset=".46" stop-color="#ec3c2c"/>
+        <stop offset="1" stop-color="#a8180e"/>
+      </linearGradient>
+      <linearGradient id="lgCher-i" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ff5d72"/><stop offset="1" stop-color="#b70d2b"/>
+      </linearGradient>
+      <linearGradient id="lgBerry-i" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8f9dff"/><stop offset="1" stop-color="#3140ad"/>
+      </linearGradient>
+    </defs>
+  
+    <!-- The fruit sit out at the ends on the ribbon's line, and are drawn first so
+         the wordmark and the ribbon both overlap them. -->
+    <g transform="translate(70 180) scale(.86)">
+      <path d="M-6 -6 Q4 -62 44 -70" fill="none" stroke="#0b2b4d" stroke-width="17" stroke-linecap="round"/>
+      <path d="M14 2 Q16 -46 44 -70"  fill="none" stroke="#0b2b4d" stroke-width="17" stroke-linecap="round"/>
+      <path d="M-6 -6 Q4 -62 44 -70" fill="none" stroke="#3f9c40" stroke-width="8" stroke-linecap="round"/>
+      <path d="M14 2 Q16 -46 44 -70"  fill="none" stroke="#3f9c40" stroke-width="8" stroke-linecap="round"/>
+      <path d="M44 -70 q40 -22 64 4 q-40 22 -64 -4z" fill="#3f9c40" stroke="#0b2b4d" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="-16" cy="20" r="35" fill="url(#lgCher-i)" stroke="#0b2b4d" stroke-width="9"/>
+      <circle cx="36"  cy="32" r="28" fill="url(#lgCher-i)" stroke="#0b2b4d" stroke-width="9"/>
+      <ellipse cx="-28" cy="7" rx="11" ry="7" fill="#fff" opacity=".5" transform="rotate(-28 -28 7)"/>
+    </g>
+    <g transform="translate(772 182) scale(.86)">
+      <circle cx="16"  cy="-26" r="27" fill="url(#lgBerry-i)" stroke="#0b2b4d" stroke-width="9"/>
+      <path d="M16 -47 l6 12 13 2 -9 10 2 13 -12-6 -12 6 2-13 -9-10 13-2z" fill="#242f8a"/>
+      <circle cx="-22" cy="16" r="32" fill="url(#lgBerry-i)" stroke="#0b2b4d" stroke-width="9"/>
+      <circle cx="28"  cy="32" r="25" fill="url(#lgBerry-i)" stroke="#0b2b4d" stroke-width="9"/>
+      <ellipse cx="-33" cy="3" rx="10" ry="6" fill="#fff" opacity=".45" transform="rotate(-28 -33 3)"/>
+    </g>
+  
+    <!-- the wordmark: a soft drop shadow, a dark keyline, a cream rim, a gold face -->
+    <g text-anchor="middle" font-family="'Baloo 2',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"
+       font-weight="900" font-size="92" letter-spacing="1">
+      <text x="420" y="122" fill="#06203c" opacity=".4" transform="translate(0 10)">FRUIT TOWER</text>
+      <text x="420" y="112" fill="#0b2b4d" stroke="#0b2b4d" stroke-width="24" stroke-linejoin="round"
+            paint-order="stroke">FRUIT TOWER</text>
+      <text x="420" y="112" fill="url(#lgGold-i)" stroke="#fff6d8" stroke-width="6" stroke-linejoin="round"
+            paint-order="stroke">FRUIT TOWER</text>
+    </g>
+  
+    <!-- CLIMB on a ribbon slung under the wordmark -->
+    <g transform="translate(420 178)">
+      <path d="M-236 -4 l-48 -18 v76 l48 -18z" fill="#8e1409" stroke="#0b2b4d" stroke-width="11" stroke-linejoin="round"/>
+      <path d="M236 -4 l48 -18 v76 l-48 -18z"  fill="#8e1409" stroke="#0b2b4d" stroke-width="11" stroke-linejoin="round"/>
+      <rect x="-238" y="-22" width="476" height="80" rx="17"
+            fill="url(#lgBan-i)" stroke="#0b2b4d" stroke-width="11"/>
+      <rect x="-220" y="-11" width="440" height="11" rx="6" fill="#fff" opacity=".2"/>
+      <text x="0" y="35" text-anchor="middle" font-family="'Baloo 2',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"
+            font-weight="900" font-size="48" letter-spacing="13" fill="#fff"
+            stroke="#7a1207" stroke-width="8" paint-order="stroke">CLIMB</text>
+    </g>
+  </svg>
+  </div>
   <div id="introBy">made by Hazel</div>
 </div>
 
 <div class="screen hidden" id="mainMenu">
   <div class="sbody">
-    <h1 class="logo">🍒 FRUIT TOWER 🫐<span class="sub">C L I M B</span></h1>
+    <svg class="gamelogo" viewBox="0 0 840 250" role="img" aria-label="Fruit Tower Climb">
+      <defs>
+        <linearGradient id="lgGold" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fff09a"/><stop offset=".38" stop-color="#ffcb32"/>
+          <stop offset=".54" stop-color="#fb9d10"/><stop offset="1" stop-color="#e0700a"/>
+        </linearGradient>
+        <linearGradient id="lgBan" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff7a5c"/><stop offset=".46" stop-color="#ec3c2c"/>
+          <stop offset="1" stop-color="#a8180e"/>
+        </linearGradient>
+        <linearGradient id="lgCher" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff5d72"/><stop offset="1" stop-color="#b70d2b"/>
+        </linearGradient>
+        <linearGradient id="lgBerry" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8f9dff"/><stop offset="1" stop-color="#3140ad"/>
+        </linearGradient>
+      </defs>
+    
+      <!-- The fruit sit out at the ends on the ribbon's line, and are drawn first so
+           the wordmark and the ribbon both overlap them. -->
+      <g transform="translate(70 180) scale(.86)">
+        <path d="M-6 -6 Q4 -62 44 -70" fill="none" stroke="#0b2b4d" stroke-width="17" stroke-linecap="round"/>
+        <path d="M14 2 Q16 -46 44 -70"  fill="none" stroke="#0b2b4d" stroke-width="17" stroke-linecap="round"/>
+        <path d="M-6 -6 Q4 -62 44 -70" fill="none" stroke="#3f9c40" stroke-width="8" stroke-linecap="round"/>
+        <path d="M14 2 Q16 -46 44 -70"  fill="none" stroke="#3f9c40" stroke-width="8" stroke-linecap="round"/>
+        <path d="M44 -70 q40 -22 64 4 q-40 22 -64 -4z" fill="#3f9c40" stroke="#0b2b4d" stroke-width="8" stroke-linejoin="round"/>
+        <circle cx="-16" cy="20" r="35" fill="url(#lgCher)" stroke="#0b2b4d" stroke-width="9"/>
+        <circle cx="36"  cy="32" r="28" fill="url(#lgCher)" stroke="#0b2b4d" stroke-width="9"/>
+        <ellipse cx="-28" cy="7" rx="11" ry="7" fill="#fff" opacity=".5" transform="rotate(-28 -28 7)"/>
+      </g>
+      <g transform="translate(772 182) scale(.86)">
+        <circle cx="16"  cy="-26" r="27" fill="url(#lgBerry)" stroke="#0b2b4d" stroke-width="9"/>
+        <path d="M16 -47 l6 12 13 2 -9 10 2 13 -12-6 -12 6 2-13 -9-10 13-2z" fill="#242f8a"/>
+        <circle cx="-22" cy="16" r="32" fill="url(#lgBerry)" stroke="#0b2b4d" stroke-width="9"/>
+        <circle cx="28"  cy="32" r="25" fill="url(#lgBerry)" stroke="#0b2b4d" stroke-width="9"/>
+        <ellipse cx="-33" cy="3" rx="10" ry="6" fill="#fff" opacity=".45" transform="rotate(-28 -33 3)"/>
+      </g>
+    
+      <!-- the wordmark: a soft drop shadow, a dark keyline, a cream rim, a gold face -->
+      <g text-anchor="middle" font-family="'Baloo 2',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"
+         font-weight="900" font-size="92" letter-spacing="1">
+        <text x="420" y="122" fill="#06203c" opacity=".4" transform="translate(0 10)">FRUIT TOWER</text>
+        <text x="420" y="112" fill="#0b2b4d" stroke="#0b2b4d" stroke-width="24" stroke-linejoin="round"
+              paint-order="stroke">FRUIT TOWER</text>
+        <text x="420" y="112" fill="url(#lgGold)" stroke="#fff6d8" stroke-width="6" stroke-linejoin="round"
+              paint-order="stroke">FRUIT TOWER</text>
+      </g>
+    
+      <!-- CLIMB on a ribbon slung under the wordmark -->
+      <g transform="translate(420 178)">
+        <path d="M-236 -4 l-48 -18 v76 l48 -18z" fill="#8e1409" stroke="#0b2b4d" stroke-width="11" stroke-linejoin="round"/>
+        <path d="M236 -4 l48 -18 v76 l-48 -18z"  fill="#8e1409" stroke="#0b2b4d" stroke-width="11" stroke-linejoin="round"/>
+        <rect x="-238" y="-22" width="476" height="80" rx="17"
+              fill="url(#lgBan)" stroke="#0b2b4d" stroke-width="11"/>
+        <rect x="-220" y="-11" width="440" height="11" rx="6" fill="#fff" opacity=".2"/>
+        <text x="0" y="35" text-anchor="middle" font-family="'Baloo 2',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif"
+              font-weight="900" font-size="48" letter-spacing="13" fill="#fff"
+              stroke="#7a1207" stroke-width="8" paint-order="stroke">CLIMB</text>
+      </g>
+    </svg>
     <div class="tag">Set sail and climb the giant fruit! Bounce, swing from balloons and dodge to the top of three towers. 🍓</div>
     <!-- who is playing: pick from the saved profiles, or open the profiles screen -->
     <div id="menuProf">
