@@ -561,7 +561,7 @@ function drawGlove(B,S, lx,ly,lz, col, flip){
   S(lx,ly+0.13,lz, 0.155, col, 0.10);                               // cuff
 }
 
-function drawChar(ch, x,y,z, face, walk, airborne, t, climbing){
+function drawChar(ch, x,y,z, face, walk, airborne, t, climbing, cheering){
   const cs=Math.cos(face), sn=Math.sin(face);
   // The soles are modelled at local y=-1.32 but the collision floor is -hh (-0.9),
   // so lift every part by this much or the character sinks into the platform.
@@ -607,6 +607,12 @@ function drawChar(ch, x,y,z, face, walk, airborne, t, climbing){
     B( 0.46, 0.34-reach, 0.30, 0.22,0.62,0.22, sleeve);
     drawGlove(B,S, -0.47, 0.70+reach, 0.34, glove, -1);
     drawGlove(B,S,  0.47, 0.70-reach, 0.34, glove,  1);
+  } else if(cheering){
+    // both arms thrown up over the finish line
+    B(-0.44,0.34+bob, 0.06, 0.22,0.62,0.22, sleeve, 0.26);
+    B( 0.44,0.34+bob, 0.06, 0.22,0.62,0.22, sleeve,-0.26);
+    drawGlove(B,S, -0.54, 0.74+bob, 0.06, glove, -1);
+    drawGlove(B,S,  0.54, 0.74+bob, 0.06, glove,  1);
   } else if(airborne){
     // one arm thrown up on a jump, the other tucked in
     B(-0.52,-0.10+bob, 0.14, 0.22,0.62,0.22, sleeve, 0.22);
@@ -869,6 +875,106 @@ function drawFruitTop(s,t){
 }
 
 /* long banana bridge segment (box collision, banana look) */
+/* a thick chequered stripe painted across the summit — the finish line */
+function drawFinish(f){
+  const n=12, cw=f.w/n, row=0.62;
+  for(let i=0;i<n;i++) for(let r=0;r<2;r++)
+    box(f.x-f.w/2+(i+0.5)*cw, f.y+0.07, f.z+(r-0.5)*row, cw*0.99, 0.06, row,
+        ((i+r)%2)? C(0xf6f8fa) : C(0x23272e));
+}
+/* an arch of this tower's own berries, big enough to run through */
+function drawArch(a,T){
+  const R=a.w/2, n=13;
+  for(let k=0;k<=n;k++){ const th=k/n*3.1416;
+    const bx=a.x+Math.cos(th)*R, by=a.y+Math.sin(th)*a.h;
+    sph(bx, by, a.z, 0.44, T.coinCol);
+    sph(bx-0.14, by+0.18, a.z-0.13, 0.12, mixc(T.coinCol,[1,1,1],0.45));
+    if(k%3===1) box(bx+0.30, by+0.34, a.z, 0.44,0.06,0.18, C(0x4f9a3a), th+0.5); }
+  // slim posts so the arch looks planted rather than floating
+  for(const sgn of [-1,1]) cyl(a.x+sgn*R, a.y+0.35, a.z, 0.13, 0.70, C(0x8f7a52));
+}
+/* a teleporter pad: blue carries you onward, red dumps you back at the start */
+function drawPortal(p,t){
+  const col = p.to==='start' ? C(0xff7a7a) : C(0x7ae4ff);
+  cyl(p.x, p.y+0.09, p.z, 1.75, 0.18, mixc(col,[0,0,0],0.45));
+  cyl(p.x, p.y+0.20, p.z, 1.45, 0.10, col);
+  glowOn(); alpha(0.09); cyl(p.x, p.y+2.3, p.z, 1.30, 4.4, col); glowOff();
+  for(let k=0;k<9;k++){ const a=t*1.7+k/9*6.2832;
+    sph(p.x+Math.cos(a)*1.32, p.y+0.4+(k/9)*3.7, p.z+Math.sin(a)*1.32,
+        0.12, mixc(col,[1,1,1],0.40)); }
+}
+/* the key, bobbing in a pool of light */
+function drawKey(k,t){
+  if(k.got) return;
+  const y=k.y+Math.sin(t*3)*0.12;
+  glowOn(); alpha(0.12); sph(k.x,y,k.z,1.2,C(0xffe07a),1.2); glowOff();
+  const a=t*1.5;
+  for(let i=0;i<10;i++){ const th=a+i/10*6.2832;
+    sph(k.x+Math.cos(th)*0.26, y+0.30, k.z+Math.sin(th)*0.26, 0.07, C(0xffd34d)); }
+  cyl(k.x, y-0.12, k.z, 0.07, 0.74, C(0xffd34d));
+  box(k.x+0.17, y-0.44, k.z, 0.32,0.09,0.09, C(0xffd34d));
+  box(k.x+0.17, y-0.26, k.z, 0.32,0.09,0.09, C(0xffd34d));
+}
+/* the cage: bars and a padlock, gone the moment it is unlocked */
+function drawCage(c,t){
+  if(c.open) return;
+  const r=c.r, h=3.6;
+  for(let k=0;k<10;k++){ const a=k/10*6.2832;
+    cyl(c.x+Math.cos(a)*r, c.y+h/2, c.z+Math.sin(a)*r, 0.075, h, C(0x9aa4b2)); }
+  for(const yy of [0.14, h-0.10])
+    for(let k=0;k<20;k++){ const a=k/20*6.2832;
+      box(c.x+Math.cos(a)*r, c.y+yy, c.z+Math.sin(a)*r, 0.09,0.08,r*0.34, C(0x7b8694), a); }
+  cyl(c.x, c.y+h-0.02, c.z, r*1.02, 0.14, C(0x7b8694));
+  cyl(c.x, c.y+h+0.20, c.z, r*0.30, 0.26, C(0x7b8694));
+  box(c.x, c.y+1.55, c.z-r-0.06, 0.36,0.42,0.16, C(0xffd34d));
+  box(c.x, c.y+1.86, c.z-r-0.06, 0.16,0.22,0.12, C(0xd9b13a));
+}
+/* the folk you meet: a herald, a princess, a king, a queen */
+function drawPerson(p,t,T){
+  const royal = p.kind==='king'||p.kind==='queen';
+  const base = p.kind==='herald' ? C(0x5f7dd6) : T.coinCol;
+  const gown = p.kind==='king' ? mixc(base,[0,0,0],0.30)
+             : p.kind==='queen'? mixc(base,[1,1,1],0.22) : base;
+  const skin=C(0xf6c9a0), a0=p.ang||0;
+  // freed princesses hop for joy; greeters clap
+  const cheer = !!p.cheer, hop = cheer? Math.abs(Math.sin(t*5.5))*0.55 : 0;
+  const y=p.y+hop;
+  const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(p.x+lx*Math.cos(a0)+lz*Math.sin(a0), y+ly,
+      p.z-lx*Math.sin(a0)+lz*Math.cos(a0), sx,sy,sz, c, a0, rz);
+  cyl(p.x, y+0.46, p.z, 0.42, 0.92, gown);                 // skirt / robe
+  cyl(p.x, y+0.62, p.z, 0.47, 0.14, mixc(gown,[1,1,1],0.22));
+  cyl(p.x, y+1.06, p.z, 0.30, 0.36, gown);                 // bodice
+  B(0,1.32,0, 0.30,0.18,0.26, skin);                       // neck
+  B(0,1.62,0, 0.46,0.44,0.42, skin);                       // head
+  B(0,1.85,0, 0.50,0.14,0.46, p.kind==='king'? C(0x8a6a4a) : C(0x6b3f1d));
+  if(!royal && p.kind!=='herald') B(0,1.56,-0.27, 0.42,0.58,0.10, C(0x6b3f1d)); // long hair
+  // crown for the royals, a slim tiara otherwise
+  const cw = royal? 0.30 : 0.20;
+  cyl(p.x, y+1.94, p.z, cw, royal?0.15:0.08, C(0xffd34d));
+  for(let k=0;k<5;k++){ const a=a0+k/5*6.2832;
+    cone(p.x+Math.cos(a)*cw*0.82, y+2.06, p.z+Math.sin(a)*cw*0.82,
+         0.055, royal?0.22:0.13, C(0xffd34d)); }
+  // arms
+  if(cheer){                                               // both arms up
+    B(-0.38,1.28, 0.02, 0.16,0.56,0.16, skin, 0.28);
+    B( 0.38,1.28, 0.02, 0.16,0.56,0.16, skin,-0.28);
+    B(-0.46,1.62, 0.02, 0.16,0.16,0.16, skin);
+    B( 0.46,1.62, 0.02, 0.16,0.16,0.16, skin);
+  } else if(p.clap){                                       // hands meeting
+    const c2=Math.abs(Math.sin(t*7))*0.20;
+    B(-0.28-c2,1.06, 0.30, 0.16,0.50,0.16, skin, -1.0);
+    B( 0.28+c2,1.06, 0.30, 0.16,0.50,0.16, skin,  1.0);
+    B(-0.13-c2,1.02, 0.44, 0.16,0.16,0.16, skin);
+    B( 0.13+c2,1.02, 0.44, 0.16,0.16,0.16, skin);
+  } else {
+    B(-0.40,1.02, 0.02, 0.16,0.54,0.16, skin);
+    B( 0.40,1.02, 0.02, 0.16,0.54,0.16, skin);
+  }
+  // a little face so they read as friendly
+  const D=(lx,ly,w2,h2,c)=>B(lx,ly,0.215, w2,h2,0.02, c);
+  D(-0.11,1.67, 0.08,0.10, C(0x241f2b)); D(0.11,1.67, 0.08,0.10, C(0x241f2b));
+  D(0,1.52, 0.16,0.06, C(0xc2455c));
+}
 /* a log lying across the route: a round timber with sawn end-grain */
 function drawLog(s){
   const r=s.h/2, half=s.w/2;
@@ -1089,7 +1195,8 @@ function drawSplash(){
 function buildLevel(idx){
   const T=THEMES[idx];
   const solids=[], spikes=[], fans=[], swings=[], checks=[], coins=[];
-  let goal=null, fi=0;
+  const npcs=[], keys=[], cages=[], ports=[];
+  let goal=null, fi=0, finish=null, arch=null;
   const nextFruit=()=>T.fruits[fi++ % T.fruits.length];
 
   let cx=0, cy=0, cz=0;
@@ -1181,6 +1288,33 @@ function buildLevel(idx){
     coins.push({x:s.x+side*0.20, y:top+0.78, z:s.z+rd*1.7, got:false, ph:2});
     return s;
   }
+  // A tall lift. Its swing is centred so the LOW point sits level with the
+  // platform you board from, and you step off near the top, so one ride gains
+  // a lot of height.
+  function elevator(gap,r,amp,spd){
+    cz += lastR+r+gap;
+    const centre = cy+amp;
+    const s={type:'disc',x:cx,y:centre,z:cz,r:r,h:1.2,fruit:nextFruit(),
+      bx:cx,by:centre,bz:cz,ang:0,axis:'y',amp:amp,mspd:spd,ph:-1.5708,lift:true};
+    solids.push(s); lastR=r;
+    cy = centre+amp-0.8;
+    return s;
+  }
+  // The summit: one very large square, a chequered finish line to run across,
+  // an arch of this tower's own berries to run through, and a teleporter out
+  // with whoever is waiting to greet you standing beside it.
+  function finishArea(gap,dy,side,greeters){
+    const s=hub(0,gap,dy,side,{c:C(0xf7f0e3),summit:true});
+    const top=s.y+s.h/2;
+    finish={x:s.x, y:top, z:s.z-side*0.20, w:side*0.92, crossed:false};
+    arch  ={x:s.x, y:top, z:finish.z, w:side*0.60, h:5.2};
+    const pz=s.z+side*0.30;
+    goal={x:s.x, y:top, z:pz, r:2.4, portal:true, to:'next'};
+    (greeters||[]).forEach(g=>npcs.push({x:s.x+g.dx, y:top, z:pz+0.6,
+      kind:g.kind, ang:3.1416, clap:!!g.clap, greeter:true}));
+    coinLine(s.x, top+0.9, s.z-side*0.36, 3, side*0.16);
+    return s;
+  }
   // A wide ramp of logs lying across the route, each one a step up from the
   // last: hop log to log to gain height, then jump off the top one to the next
   // fruit platform as normal.
@@ -1230,6 +1364,44 @@ function buildLevel(idx){
     cz=startZ+(segs-1)*segLen; lastR=segLen/2;
     return {x:cx,y:cy,z:cz};
   }
+  // A junction with three ways on. Only one holds the key; the other two stop
+  // dead at a teleporter that dumps you back at the boat. Which one is the real
+  // route is drawn at random every build, and each branch bends away so you
+  // cannot see the end of it from the junction.
+  function keyJunction(gap,dy,side){
+    const j=hub(0,gap,dy,side,{c:C(0xdfe6ff),junction:true});
+    const good=Math.floor(Math.random()*3);
+    const bx=cx, by=cy, bz=cz, br=side/2;
+    let goodEnd=null;
+    [-1,0,1].forEach((lane,i)=>{
+      cx=bx; cy=by; cz=bz; lastR=br;
+      let a=turnHop(lane*7.0, 2.8, 1.0, 2.6); coinsOn(a,1);
+      a=turnHop(lane*3.0, 2.6, 0.9, 2.4);
+      a=turnHop(lane*1.5, 2.6, 0.8, 2.8);
+      const top=a.y+a.h/2;
+      if(i===good){ keys.push({x:a.x, y:top+1.0, z:a.z, got:false});
+                    goodEnd={x:cx,y:cy,z:cz,r:lastR}; }
+      else ports.push({x:a.x, y:top, z:a.z, to:'start'});
+    });
+    // the branch with the key IS the way on, so the route resumes from its end
+    cx=goodEnd.x; cy=goodEnd.y; cz=goodEnd.z; lastR=goodEnd.r;
+    return j;
+  }
+  // A spur that drops off the route to the caged princess and steps back up
+  // again — you have to climb back out once she is free.
+  function cageSpur(){
+    const bx=cx, by=cy, bz=cz, br=lastR;
+    cx=bx-8.5; cz=bz+2.0; cy=by-1.9; lastR=0;
+    const step=disc(0,0,0,2.4); coinsOn(step,1);
+    cx-=9.0; cy-=1.9; cz+=5.0;
+    const pad=disc(0,0,0,5.2);
+    const top=pad.y+pad.h/2;
+    const cage={x:pad.x, y:top, z:pad.z, r:2.3, open:false};
+    cages.push(cage);
+    npcs.push({x:pad.x, y:top, z:pad.z, kind:'princess', ang:0, cageOf:cage});
+    cx=bx; cy=by; cz=bz; lastR=br;      // back on the main route
+    return pad;
+  }
   // A chocolate-bar wall standing straight across the route. You hop at its
   // face and hold forward: the character hauls themselves up hand over hand and
   // steps off on top, which becomes the new route height. The face runs a long
@@ -1269,13 +1441,13 @@ function buildLevel(idx){
     // ---- turn right again, off the plaza ----
     s=turnHop(6.5, 3.0, 1.3, 2.6); coinsOn(s,2);
 
-    // ---- a chocolate-bar wall you climb by holding forward ----
-    s=climbWall(2.2, 5.5, 9.0);
+    // ---- a tall chocolate-bar wall you climb by holding forward ----
+    s=climbWall(2.2, 11.0, 9.0);
 
-    s=hop(-1.6, 2.6, 1.3, 3.0); s.fruit='gumdrop'; coinsOn(s,2);
-    // ---- elevator: a slow, tall up/down platform ----
-    s=hop(0, 2.8, 1.4, 2.4, {axis:'y',amp:3.2,mspd:0.5,ph:0}); coinsOn(s,2);
-    s=hop(0, 2.8, 1.4, 3.0); s.fruit='lollipop'; coinsOn(s,2); chk(s);
+    s=hop(-1.6, 2.6, 1.6, 3.0); s.fruit='gumdrop'; coinsOn(s,2);
+    // ---- a proper lift: it rides a long way up ----
+    s=elevator(2.8, 2.6, 9.0, 0.42); coinsOn(s,2);
+    s=hop(0, 2.8, 1.6, 3.0); s.fruit='lollipop'; coinsOn(s,2); chk(s);
 
     // a plaza-sized deck with a spike row straight across it — jump the row
     s=spikeDeck(3.0, 1.4, 12.8, 2.4);
@@ -1285,8 +1457,7 @@ function buildLevel(idx){
     cz=b.z;
     s=hop(0, 2.8, 1.4, 2.5); coinsOn(s,2); chk(s);
     s=hop(1.8, 2.6, 1.5, 3.9); coinsOn(s,3);
-    const g=hop(-1.8, 2.8, 1.5, 5.0);
-    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.4};
+    finishArea(3.0, 1.5, 20.0, [{kind:'princess', dx:-4.2}]);
   }
 
   if(idx===1){
@@ -1326,14 +1497,22 @@ function buildLevel(idx){
 
     const b=bananaBridge(0, 2.8, 1.3, 5, 3.0); cz=b.z;
     s=hop(0, 2.8, 1.4, 2.8); coinsOn(s,2); chk(s);
-    const g=hop(0, 2.8, 1.5, 4.8);
-    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.4};
+    finishArea(3.0, 1.5, 20.0, [{kind:'princess', dx:-4.2}]);
   }
 
   if(idx===2){
-    /* BLUEBERRY — balloon swing, down-fan, spinner, mover, biggest spike deck */
+    /* BLUEBERRY — the rescue: a herald on the boat, a three-way junction for
+       the key, the caged princess down a spur, and the royals at the summit */
+    npcs.push({x:-1.0, y:boat.y+boat.h/2, z:3.4, kind:'herald', ang:0.5,
+      line:'The blueberry princess is locked in a cage! Find the key 🔑'});
     let s=hop(0, 3.0, 1.4, 3.4);  coinsOn(s,3);
     s=hop(-2.0, 2.6, 1.4, 2.4);   coinsOn(s,2); chk(s);
+
+    // ---- three ways on: one hides the key, two are dead ends ----
+    keyJunction(2.8, 1.3, 11.0);
+    s=hop(0, 3.0, 1.4, 3.2); coinsOn(s,2); chk(s);
+    // ---- drop down the spur to her cage, then climb back up ----
+    cageSpur();
     s=hop(2.0, 2.6, 1.2, 3.0);    coinsOn(s,2);
     const az=s.z+7.0, ay=s.y+8.0;
     swings.push({ax:s.x,ay:ay,az:az,len:5.4,dirx:0,dirz:1,ang:-0.55,angVel:0,
@@ -1355,11 +1534,13 @@ function buildLevel(idx){
     s=spikeDeck(3.0, 1.5, 12.8, 2.6);
     const b=bananaBridge(0, 3.0, 1.4, 7, 3.0); cz=b.z;
     s=hop(0, 2.8, 1.4, 3.0); coinsOn(s,3); chk(s);
-    const g=hop(0, 2.8, 1.5, 5.2);
-    goal={x:g.x,y:g.y+g.h/2,z:g.z,r:3.6};
+    // the king and queen of blueberry land are waiting at the top, clapping
+    finishArea(3.0, 1.5, 22.0, [{kind:'king', dx:-4.6, clap:true},
+                                {kind:'queen', dx:4.6, clap:true}]);
   }
 
-  return { theme:T, solids, spikes, fans, swings, checks, coins, goal, spawn, boat };
+  return { theme:T, solids, spikes, fans, swings, checks, coins, goal, spawn, boat,
+           npcs, keys, cages, ports, finish, arch };
 }
 
 /* =========================================================================
@@ -1369,7 +1550,7 @@ let state='intro';
 let world=null, levelIdx=0;
 const player={ x:0,y:2,z:0, vx:0,vy:0,vz:0, r:0.42, hh:0.9, onGround:false, facing:0, walk:0,
   standingOn:null, respawn:{x:0,y:2,z:0}, dead:false, deadT:0, swing:null, swingCd:0,
-  climbing:false, climbHint:false };
+  climbing:false, climbHint:false, hasKey:false, celebrateUntil:0 };
 let lives=3, coinsLevel=0, coinsForLife=0, runTime=0, running=false;
 const GRAV=-26, JUMP=11, MOVE=7, TRAMP=21, AIR=0.72, CLIMB=6;
 const cam={ yaw:Math.PI, pitch:0.42, dist:10 };
@@ -1390,6 +1571,7 @@ function startLevel(idx){
   player.respawn={x:world.spawn.x,y:world.spawn.y,z:world.spawn.z};
   resetPlayerTo(world.spawn);
   coinsLevel=0; running=true; player.climbHint=false;   // re-teach the climb each tower
+  player.hasKey=false; player.celebrateUntil=0;
   const T=world.theme; gl.clearColor(T.sky[0],T.sky[1],T.sky[2],1); gl.uniform3fv(loc.uFog,T.fog);
   document.getElementById('coinPill').firstChild.textContent = T.coin+' ';
   updateHUD();
@@ -1567,6 +1749,41 @@ function postPhysics(t){
   for(const ck of world.checks){ if(!ck.hit && Math.abs(player.x-ck.x)<2.6 && Math.abs(player.z-ck.z)<2.6 && Math.abs(player.y-ck.y)<2.2){
       ck.hit=true; player.respawn={x:ck.x,y:ck.y+0.7,z:ck.z}; Audio_.sfx('check'); showMsg('Checkpoint! ✔',1200); } }
 
+  const near=(o,rad,vert)=>Math.hypot(player.x-o.x,player.z-o.z)<rad &&
+                           Math.abs(player.y-o.y)<(vert||3.0);
+
+  // somebody with something to tell you
+  for(const n of world.npcs){ if(n.said||!n.line) continue;
+    if(near(n,3.6)){ n.said=true; showMsg(n.line,3200); } }
+
+  // the key
+  for(const k of world.keys){ if(k.got) continue;
+    if(near(k,2.0)){ k.got=true; player.hasKey=true;
+      Audio_.sfx('extra'); showMsg('You found the key! 🔑',1800); } }
+
+  // her cage — the key opens it, otherwise it just rattles
+  for(const c of world.cages){ if(c.open) continue;
+    if(near(c,c.r+1.8,3.6)){
+      if(player.hasKey){ c.open=true;
+        const pr=world.npcs.find(n=>n.cageOf===c);
+        if(pr) pr.cheer=true;
+        Audio_.sfx('win'); showMsg('You freed the princess! 👑 Now climb back up',2600); }
+      else if(!c.told){ c.told=true; showMsg('It’s locked — find the key! 🔒',1900); } } }
+
+  // dead-end teleporters send you back to the boat
+  for(const p of world.ports){
+    if(p.to==='start' && near(p,1.8,2.8)){
+      Audio_.sfx('splash'); showMsg('Dead end! Back to the start 🌀',1900);
+      resetPlayerTo(world.spawn); return; } }
+
+  // crossing the finish line: throw your arms up
+  const F=world.finish;
+  if(F && !F.crossed && player.z>F.z && Math.abs(player.x-F.x)<F.w/2 &&
+     Math.abs(player.y-F.y)<3.2){
+    F.crossed=true; player.celebrateUntil=t+2.4; Audio_.sfx('level');
+    showMsg('Finish! 🎉',1700);
+    for(const n of world.npcs) if(n.greeter) n.clap=true; }
+
   const g=world.goal;
   if(g){ const dx=player.x-g.x,dz=player.z-g.z;
     if(dx*dx+dz*dz<g.r*g.r && Math.abs(player.y-g.y)<3.2) levelComplete(); }
@@ -1708,24 +1925,21 @@ function render(t){
     glowOn(); alpha(0.13); sph(c.x, c.y+bob, c.z, 0.44, mixc(col,[1,1,1],0.5), 0.66); glowOff();
   }
 
-  /* ---- goal: giant fruit trophy + flag ---- */
+  /* ---- the summit: finish line, berry arch, teleporter, greeters ---- */
+  if(world.finish) drawFinish(world.finish);
+  if(world.arch)   drawArch(world.arch, T);
   const g=world.goal;
-  if(g){
-    cyl(g.x, g.y+2.6, g.z-2.9, 0.15, 5.0, C(0xcbd5e1));
-    const wv=Math.sin(t*4)*0.14;
-    box(g.x+1.35, g.y+4.4+wv, g.z-2.9, 2.5,1.4,0.10, C(0xff3b6b));
-    box(g.x+1.35, g.y+4.4+wv, g.z-2.9, 2.52,0.42,0.12, C(0xffffff));
-    sph(g.x, g.y+1.7, g.z, 1.5, T.coinCol, 2.5);
-    sph(g.x, g.y+2.05, g.z, 1.1, mixc(T.coinCol,[1,1,1],0.25), 1.2);
-    cyl(g.x, g.y+3.2, g.z, 0.09, 0.9, C(0x6d8a3a));
-    box(g.x+0.4, g.y+3.5, g.z, 0.9,0.10,0.4, T.accent, 0.4, 0.3);
-    glowOn(); alpha(0.09); sph(g.x, g.y+1.9, g.z, 2.3, C(0xffffff), 3.0); glowOff();
-  }
+  if(g) drawPortal(g,t);                       // the way on to the next tower
+  for(const pt of world.ports) drawPortal(pt,t);
+  for(const k of world.keys)  drawKey(k,t);
+  for(const c of world.cages) drawCage(c,t);
+  for(const n of world.npcs)  drawPerson(n,t,T);
 
   /* ---- player ---- */
   if(!(player.dead && (player.deadKind==='water' || Math.floor(player.deadT*10)%2===0)))
     drawChar(CHARACTERS[chosen], player.x, player.y, player.z, player.facing, player.walk,
-             !player.onGround || !!player.swing, t, player.climbing);
+             !player.onGround || !!player.swing, t, player.climbing,
+             player.celebrateUntil>t);
 }
 
 function drawTrampoline(s,t){
