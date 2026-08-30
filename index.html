@@ -112,6 +112,24 @@
   .arrow{ pointer-events:auto; cursor:pointer; width:62px; height:62px; border-radius:50%; border:none;
     font-size:28px; color:#fff; background:rgba(255,255,255,.18); box-shadow:0 4px 0 rgba(0,0,0,.35); }
   .arrow:active{ transform:translateY(3px); }
+
+  /* costume arrows sit in a column beside the climber; the accessory drawer
+     slides over the whole screen so the grid can be finger-sized */
+  #cosCol{ position:absolute; right:16px; top:50%; transform:translateY(-50%);
+    display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:auto; }
+  #cosName{ font-size:clamp(12px,3vw,16px); font-weight:800; opacity:.9; margin-bottom:6px; }
+  #charRow{ display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; }
+  #accDrawer{ position:fixed; inset:0; z-index:70; background:rgba(4,14,26,.94);
+    display:flex; flex-direction:column; padding:14px; }
+  #accGrid{ flex:1; overflow-y:auto; display:grid; gap:10px; padding:4px 2px 10px;
+    grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); align-content:start; }
+  .accCard{ cursor:pointer; border:none; border-radius:14px; padding:10px 6px; color:#fff;
+    background:rgba(255,255,255,.14); font:inherit; font-weight:800; font-size:12px;
+    box-shadow:0 3px 0 rgba(0,0,0,.35); line-height:1.25; }
+  .accCard .tag{ display:block; font-size:10px; opacity:.65; font-weight:700; margin-top:3px; }
+  .accCard.on{ background:#4dc3ff; color:#062033; }
+  #profWho{ font-size:clamp(13px,3.2vw,17px); font-weight:800; opacity:.9; margin:2px 0 10px; }
+  #unlockNote{ font-size:clamp(14px,3.6vw,20px); font-weight:800; margin:6px 0 10px; color:#ffe07a; }
   .dots{ display:flex; gap:7px; justify-content:center; margin-bottom:8px; }
   .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.3); }
   .dot.on{ background:#ffd34d; }
@@ -188,6 +206,8 @@
   <button class="btn" id="beginBtn">▶ Begin Game</button>
   <button class="btn alt" id="optionsBtn">⚙ Options</button>
   <button class="btn ghost" id="leaderBtn">🏆 Leaderboard</button>
+  <button class="btn ghost" id="profileBtn">🧑 Player</button>
+  <div class="credit" id="menuWho"></div>
   <button class="btn ghost" id="quitBtn">✖ Quit</button>
   <div class="credit">a little game for Hazel 💛</div>
 </div>
@@ -218,11 +238,39 @@
   </div>
   <div id="charMid">
     <button class="arrow" id="charPrev">◀</button>
+    <div id="cosCol">
+      <button class="arrow" id="cosUp">▲</button>
+      <button class="arrow" id="cosDown">▼</button>
+    </div>
     <button class="arrow" id="charNext">▶</button>
   </div>
   <div id="charBot">
+    <div id="cosName">Costume: Original</div>
     <div class="dots" id="charDots"></div>
-    <button class="btn" id="charGo">Let's climb! 🧗</button>
+    <div id="charRow">
+      <button class="btn small" id="accBtn">👒 Accessories</button>
+      <button class="btn" id="charGo">Let's climb! 🧗</button>
+    </div>
+  </div>
+</div>
+
+<div id="accDrawer" class="hidden">
+  <h2 style="margin:2px 0 6px">👒 Your accessories</h2>
+  <div id="profWho"></div>
+  <div id="accGrid"></div>
+  <button class="btn" id="accClose">◀ Done</button>
+</div>
+
+<div class="screen hidden" id="profileScreen">
+  <div class="panel">
+    <h2>🧑 Who's playing?</h2>
+    <div class="tag" style="margin-bottom:10px">Your unlocks are saved under this name on this device.</div>
+    <div class="nameFields">
+      <input id="profInput" type="text" maxlength="14" autocomplete="off" spellcheck="false" placeholder="Your name" />
+      <button class="btn small" id="profSave">Save</button>
+    </div>
+    <div id="profList" style="margin-top:12px"></div>
+    <button class="btn small" id="profBack" style="margin-top:12px">◀ Back</button>
   </div>
 </div>
 
@@ -244,6 +292,7 @@
 <div class="screen hidden" id="winScreen">
   <h1 class="logo" id="winTitle" style="font-size:clamp(34px,9vw,64px)">🎉 YOU WON! 🎉</h1>
   <div class="tag" id="winStats"></div>
+  <div id="unlockNote"></div>
   <div id="nameRow">
     <label for="nameInput" id="nameLabel">Put your name on the leaderboard!</label>
     <div class="nameFields">
@@ -552,7 +601,330 @@ const CHARACTERS=[
     skin:C(0xc98b52), hair:C(0x8b5a2b), shirt:C(0xffd34d), legs:C(0x9c6b2f), shoe:C(0x5a3a1a),
     eye:C(0x5a3a1a), blush:true, bigEyes:true },
 ];
+
+/* =========================================================================
+   COSMETICS
+   Fifty accessories anybody can wear, plus five costumes unique to each
+   climber. Every item is authored in the character's own local space, so the
+   helpers handed to `d()` already carry their facing and bob.
+   ========================================================================= */
+const ACCS=[
+ {id:'fruitcrown',n:'Fruit Crown',g:'Reward',sl:'head',d:a=>{ a.y(0,a.top+0.09,0,0.40,0.14,C(0xffd34d));
+   for(let k=0;k<5;k++){const h=k/5*6.2832;
+     a.s(Math.cos(h)*0.33,a.top+0.25,Math.sin(h)*0.33,0.12,[C(0xd6183f),C(0xf03047),C(0x4f61d8),C(0xff8c1a),C(0x9bd35a)][k]);}}},
+ {id:'cowboy',n:'Cowboy Hat',g:'Cowboy',sl:'head',d:a=>{ a.y(0,a.top+0.06,0,0.62,0.09,C(0x8a5a2a));
+   a.y(0,a.top+0.24,0,0.33,0.30,C(0x9c6a34)); a.y(0,a.top+0.12,0,0.35,0.07,C(0x5d3a18)); }},
+ {id:'sheriff',n:'Sheriff Star',g:'Cowboy',sl:'face',d:a=>{ for(let k=0;k<5;k++){const h=k/5*6.2832;
+   a.b(0.30,-0.10,0.28,0.06,0.20,0.03,C(0xffd34d),h);} a.s(0.30,-0.10,0.29,0.07,C(0xffe07a)); }},
+ {id:'sombrero',n:'Sombrero',g:'Cowboy',sl:'head',d:a=>{ a.y(0,a.top+0.05,0,0.86,0.07,C(0xe8c37a));
+   a.k(0,a.top+0.30,0,0.34,0.42,C(0xe8c37a)); a.y(0,a.top+0.12,0,0.36,0.06,C(0xd0453f)); }},
+ {id:'tallstripe',n:'Tall Stripy Hat',g:'Silly',sl:'head',d:a=>{ a.y(0,a.top+0.05,0,0.52,0.08,C(0xffffff));
+   for(let k=0;k<6;k++) a.y(0,a.top+0.18+k*0.18,0,0.30,0.18,k%2?C(0xffffff):C(0xe0273f)); }},
+ {id:'astro',n:'Astronaut Helmet',g:'Space',sl:'head',d:a=>{ a.s(0,a.hy,0,0.50,C(0xe8eef6));
+   a.b(0,a.hy+0.02,0.40,0.56,0.36,0.06,C(0x2e4d6b)); a.y(0,a.hy-0.42,0,0.42,0.10,C(0xc9d4e2)); }},
+ {id:'diverhelm',n:'Diving Helmet',g:'Diver',sl:'head',d:a=>{ a.y(0,a.hy,0,0.46,0.72,C(0xb08d3a));
+   a.y(0,a.hy+0.40,0,0.24,0.10,C(0x8f6f28)); a.y(0,a.hy+0.02,0.44,0.20,0.08,C(0x9fd8ff),1.5708); }},
+ {id:'snorkel',n:'Snorkel Mask',g:'Diver',sl:'face',d:a=>{ a.b(0,a.hy+0.06,0.36,0.52,0.22,0.08,C(0x9fd8ff));
+   a.b(0,a.hy+0.06,0.30,0.58,0.28,0.04,C(0x2b6f8f)); a.y(0.32,a.hy+0.24,0.24,0.05,0.50,C(0xffd34d)); }},
+ {id:'shades',n:'Big Sunglasses',g:'Beach',sl:'face',d:a=>{ a.b(0,a.hy+0.05,0.35,0.66,0.24,0.05,C(0x241f2b));
+   a.b(-0.17,a.hy+0.05,0.375,0.24,0.18,0.02,C(0x4a6fa8)); a.b(0.17,a.hy+0.05,0.375,0.24,0.18,0.02,C(0x4a6fa8)); }},
+ {id:'catears',n:'Cat Ears',g:'Animals',sl:'head',d:a=>{ for(const s of[-1,1]){
+   a.k(s*0.24,a.top+0.14,0,0.15,0.30,a.ch.hair||C(0x2f2530)); a.k(s*0.24,a.top+0.12,0.02,0.09,0.20,C(0xff9ecb)); }}},
+ {id:'dogears',n:'Puppy Ears',g:'Animals',sl:'head',d:a=>{ for(const s of[-1,1])
+   a.b(s*0.36,a.hy+0.06,0,0.14,0.42,0.22,C(0x8b5a2b),s*0.30); }},
+ {id:'bunnyears',n:'Bunny Ears',g:'Easter',sl:'head',d:a=>{ for(const s of[-1,1]){
+   a.b(s*0.16,a.top+0.36,0,0.15,0.72,0.11,C(0xffffff),s*0.14);
+   a.b(s*0.16,a.top+0.34,0.05,0.08,0.52,0.04,C(0xffb6d5),s*0.14); }}},
+ {id:'bearears',n:'Bear Ears',g:'Animals',sl:'head',d:a=>{ for(const s of[-1,1]){
+   a.s(s*0.28,a.top+0.10,0,0.15,C(0x8b5a2b)); a.s(s*0.28,a.top+0.10,0.09,0.08,C(0xd8a86a)); }}},
+ {id:'frog',n:'Frog Eyes',g:'Animals',sl:'head',d:a=>{ for(const s of[-1,1]){
+   a.s(s*0.26,a.top+0.10,0.06,0.16,C(0x6bbf4a)); a.s(s*0.26,a.top+0.14,0.18,0.07,C(0xffffff));
+   a.s(s*0.26,a.top+0.15,0.22,0.04,C(0x241f2b)); }}},
+ {id:'unicorn',n:'Unicorn Horn',g:'Rainbow',sl:'head',d:a=>{ a.k(0,a.top+0.30,0.06,0.09,0.52,C(0xffe07a));
+   for(let k=0;k<6;k++) a.s(Math.cos(k)*0.26,a.top+0.10,Math.sin(k)*0.26,0.08,
+     [C(0xff4d6d),C(0xffd34d),C(0x9bd35a),C(0x4dc3ff),C(0x9a7bff),C(0xff9ecb)][k]); }},
+ {id:'dinohood',n:'Dino Hood',g:'Animals',sl:'head',d:a=>{ a.s(0,a.hy+0.10,0,0.46,C(0x57b04a));
+   for(let k=0;k<4;k++) a.k(0,a.top+0.12+k*0.02,-0.10-k*0.16,0.09,0.22,C(0xffd34d)); }},
+ {id:'rainbowfro',n:'Rainbow Afro',g:'Rainbow',sl:'head',d:a=>{
+   // sits ON the head, not over the face
+   for(let k=0;k<12;k++){ const h=k/12*6.2832, r=0.40;
+     a.s(Math.cos(h)*r,a.top+0.02+Math.sin(k*1.7)*0.07,Math.sin(h)*r*0.85,0.19,
+       [C(0xff4d6d),C(0xff8c1a),C(0xffd34d),C(0x9bd35a),C(0x4dc3ff),C(0x9a7bff)][k%6]); }
+   a.s(0,a.top+0.20,0,0.26,C(0xffd34d)); }},
+ {id:'rainbowcap',n:'Rainbow Cap',g:'Rainbow',sl:'head',d:a=>{ a.s(0,a.hy+0.24,0,0.40,C(0xffffff),0.30);
+   for(let k=0;k<6;k++) a.b(0,a.top+0.10,0.02,0.72-k*0.02,0.05,0.10,
+     [C(0xff4d6d),C(0xff8c1a),C(0xffd34d),C(0x9bd35a),C(0x4dc3ff),C(0x9a7bff)][k],k/6*3.1416);
+   a.b(0,a.top+0.04,0.34,0.44,0.06,0.28,C(0x4dc3ff)); }},
+ {id:'beanie',n:'Bobble Beanie',g:'Winter',sl:'head',d:a=>{ a.s(0,a.hy+0.20,0,0.40,C(0x4a74c8),0.34);
+   a.y(0,a.top-0.02,0,0.42,0.12,C(0x2f4f9a)); a.s(0,a.top+0.36,0,0.15,C(0xffffff)); }},
+ {id:'tophat',n:'Top Hat',g:'Fancy',sl:'head',d:a=>{ a.y(0,a.top+0.05,0,0.56,0.08,C(0x241f2b));
+   a.y(0,a.top+0.34,0,0.32,0.52,C(0x241f2b)); a.y(0,a.top+0.14,0,0.34,0.08,C(0xe0273f)); }},
+ {id:'goldcrown',n:'Gold Crown',g:'Fancy',sl:'head',d:a=>{ a.y(0,a.top+0.10,0,0.38,0.18,C(0xffd34d));
+   for(let k=0;k<6;k++){const h=k/6*6.2832;
+     a.k(Math.cos(h)*0.32,a.top+0.30,Math.sin(h)*0.32,0.07,0.22,C(0xffd34d));} a.s(0,a.top+0.14,0.34,0.07,C(0xe0273f)); }},
+ {id:'tiara',n:'Jewel Tiara',g:'Fancy',sl:'head',d:a=>{ a.y(0,a.top+0.06,0,0.34,0.07,C(0xffe07a));
+   a.k(0,a.top+0.20,0.16,0.07,0.22,C(0xffe07a)); a.s(0,a.top+0.26,0.20,0.07,C(0x9fd8ff)); }},
+ {id:'wizard',n:'Wizard Hat',g:'Magic',sl:'head',d:a=>{ a.y(0,a.top+0.05,0,0.62,0.07,C(0x3b2b7a));
+   a.k(0,a.top+0.48,0,0.32,0.86,C(0x3b2b7a));
+   for(let k=0;k<4;k++) a.s(Math.cos(k*2)*0.20,a.top+0.30+k*0.14,Math.sin(k*2)*0.20,0.06,C(0xffd34d)); }},
+ {id:'witch',n:'Witch Hat',g:'Halloween',sl:'head',d:a=>{ a.y(0,a.top+0.05,0,0.66,0.07,C(0x241f2b));
+   a.k(0,a.top+0.46,0,0.30,0.82,C(0x241f2b),0.16); a.y(0,a.top+0.13,0,0.32,0.08,C(0x9a7bff)); }},
+ {id:'pumpkin',n:'Pumpkin Head',g:'Halloween',sl:'head',d:a=>{ a.s(0,a.hy+0.06,0,0.48,C(0xff8c1a),0.44);
+   a.y(0,a.top+0.14,0,0.07,0.20,C(0x4f9a3a));
+   a.b(-0.14,a.hy+0.10,0.42,0.12,0.12,0.03,C(0x241f2b),0.6); a.b(0.14,a.hy+0.10,0.42,0.12,0.12,0.03,C(0x241f2b),-0.6);
+   a.b(0,a.hy-0.14,0.42,0.28,0.08,0.03,C(0x241f2b)); }},
+ {id:'santahat',n:'Santa Hat',g:'Christmas',sl:'head',d:a=>{ a.y(0,a.top+0.04,0,0.44,0.13,C(0xffffff));
+   a.k(0,a.top+0.34,-0.06,0.32,0.56,C(0xe0273f),0.26); a.s(0.16,a.top+0.62,-0.20,0.13,C(0xffffff)); }},
+ {id:'antlers',n:'Reindeer Antlers',g:'Christmas',sl:'head',d:a=>{ for(const s of[-1,1]){
+   a.y(s*0.22,a.top+0.24,0,0.05,0.46,C(0x8a5a2a),s*0.22);
+   a.y(s*0.34,a.top+0.44,0.06,0.04,0.24,C(0x8a5a2a),s*0.9);
+   a.y(s*0.30,a.top+0.50,-0.10,0.04,0.20,C(0x8a5a2a),s*0.7); } a.s(0,a.hy+0.02,0.36,0.09,C(0xe0273f)); }},
+ {id:'elfhat',n:'Elf Hat',g:'Christmas',sl:'head',d:a=>{ a.y(0,a.top+0.04,0,0.42,0.10,C(0xffffff));
+   a.k(0,a.top+0.32,0,0.30,0.54,C(0x2f8b3f),0.30); a.s(0.22,a.top+0.54,0,0.10,C(0xffd34d)); }},
+ {id:'eggbasket',n:'Easter Basket',g:'Easter',sl:'head',d:a=>{ a.y(0,a.top+0.16,0,0.36,0.30,C(0xc98b52));
+   for(let k=0;k<4;k++) a.s(Math.cos(k*1.6)*0.18,a.top+0.34,Math.sin(k*1.6)*0.18,0.11,
+     [C(0xff9ecb),C(0x9fd8ff),C(0xffd34d),C(0x9bd35a)][k]); }},
+ {id:'flowers',n:'Flower Crown',g:'Garden',sl:'head',d:a=>{ for(let k=0;k<7;k++){const h=k/7*6.2832;
+   const c=[C(0xff9ecb),C(0xffd34d),C(0xffffff),C(0x9a7bff)][k%4];
+   for(let p=0;p<4;p++) a.s(Math.cos(h)*0.34+Math.cos(p*1.57)*0.06,a.top+0.10,Math.sin(h)*0.34+Math.sin(p*1.57)*0.06,0.055,c);
+   a.s(Math.cos(h)*0.34,a.top+0.12,Math.sin(h)*0.34,0.045,C(0xffe07a)); }}},
+ {id:'halo',n:'Angel Halo',g:'Angel',sl:'head',d:a=>{ for(let k=0;k<16;k++){const h=k/16*6.2832;
+   a.s(Math.cos(h)*0.30,a.top+0.40,Math.sin(h)*0.30,0.055,C(0xffe07a)); }}},
+ {id:'devil',n:'Devil Horns',g:'Halloween',sl:'head',d:a=>{ for(const s of[-1,1])
+   a.k(s*0.24,a.top+0.16,0,0.10,0.32,C(0xd0453f),s*0.30); }},
+ {id:'viking',n:'Viking Helmet',g:'Warrior',sl:'head',d:a=>{ a.s(0,a.hy+0.18,0,0.40,C(0xa9b2bf),0.30);
+   a.y(0,a.top+0.02,0,0.42,0.10,C(0x8a919c));
+   for(const s of[-1,1]) a.k(s*0.44,a.top+0.16,0,0.11,0.34,C(0xf0ead6),s*1.1); }},
+ {id:'knight',n:'Knight Helm',g:'Warrior',sl:'head',d:a=>{ a.b(0,a.hy+0.04,0,0.56,0.60,0.54,C(0xa9b2bf));
+   a.b(0,a.hy+0.04,0.30,0.44,0.10,0.06,C(0x555d68)); a.k(0,a.top+0.28,0,0.09,0.34,C(0xe0273f)); }},
+ {id:'pirate',n:'Pirate Hat',g:'Pirate',sl:'head',d:a=>{ a.b(0,a.top+0.10,0,0.78,0.18,0.42,C(0x241f2b),0.10);
+   a.b(0,a.top+0.22,0.10,0.30,0.10,0.16,C(0xf0ead6)); a.s(0,a.top+0.24,0.20,0.05,C(0xf0ead6)); }},
+ {id:'chef',n:'Chef Hat',g:'Jobs',sl:'head',d:a=>{ a.y(0,a.top+0.10,0,0.36,0.20,C(0xffffff));
+   a.s(0,a.top+0.42,0,0.36,C(0xffffff),0.44); }},
+ {id:'hardhat',n:'Hard Hat',g:'Jobs',sl:'head',d:a=>{ a.s(0,a.hy+0.16,0,0.40,C(0xffd34d),0.30);
+   a.y(0,a.top+0.02,0,0.46,0.08,C(0xe0b430)); a.b(0,a.top+0.02,0.36,0.34,0.07,0.20,C(0xffd34d)); }},
+ {id:'police',n:'Police Cap',g:'Jobs',sl:'head',d:a=>{ a.y(0,a.top+0.14,0,0.38,0.24,C(0x2f4f9a));
+   a.y(0,a.top+0.04,0,0.40,0.08,C(0x1f3a63)); a.b(0,a.top+0.04,0.36,0.36,0.06,0.22,C(0x1f3a63));
+   a.s(0,a.top+0.18,0.32,0.07,C(0xffd34d)); }},
+ {id:'firehelm',n:'Fire Helmet',g:'Jobs',sl:'head',d:a=>{ a.s(0,a.hy+0.16,0,0.42,C(0xd0453f),0.30);
+   a.b(0,a.top+0.04,-0.20,0.50,0.07,0.30,C(0xd0453f),-0.16); a.b(0,a.top+0.16,0.30,0.22,0.16,0.04,C(0xffd34d)); }},
+ {id:'grad',n:'Graduation Cap',g:'Fancy',sl:'head',d:a=>{ a.y(0,a.top+0.10,0,0.30,0.14,C(0x241f2b));
+   a.b(0,a.top+0.20,0,0.82,0.06,0.82,C(0x241f2b),0.78); a.y(0.34,a.top+0.14,0.14,0.03,0.26,C(0xffd34d)); }},
+ {id:'party',n:'Party Hat',g:'Silly',sl:'head',d:a=>{ a.k(0,a.top+0.34,0,0.26,0.62,C(0xff4d6d),0.10);
+   for(let k=0;k<5;k++) a.s(Math.cos(k*2)*0.16,a.top+0.16+k*0.10,Math.sin(k*2)*0.16,0.05,C(0xffd34d));
+   a.s(0,a.top+0.66,0,0.09,C(0x9fd8ff)); }},
+ {id:'propeller',n:'Propeller Beanie',g:'Silly',sl:'head',d:a=>{ a.s(0,a.hy+0.22,0,0.36,C(0x4dc3ff),0.26);
+   a.y(0,a.top+0.24,0,0.04,0.24,C(0xa9b2bf));
+   for(const s of[-1,1]) a.b(s*0.26,a.top+0.36,0,0.44,0.04,0.12,C(0xff4d6d),a.t*9*s); }},
+ {id:'headphones',n:'Headphones',g:'Modern',sl:'head',d:a=>{ a.b(0,a.top+0.14,0,0.10,0.16,0.66,C(0x241f2b),0);
+   for(const s of[-1,1]) a.y(s*0.38,a.hy+0.02,0,0.15,0.12,C(0x2fa8e0),1.5708); }},
+ {id:'blockhead',n:'Block Head',g:'Blocky',sl:'head',d:a=>{ a.b(0,a.hy+0.06,0,0.68,0.66,0.66,C(0x6bbf4a));
+   for(const p of [[-0.16,0.10],[0.16,0.10],[0,-0.10]])
+     a.b(p[0],a.hy+0.06+p[1],0.34,0.20,0.20,0.03,C(0x241f2b)); }},
+ {id:'slimehat',n:'Slime Hat',g:'Blocky',sl:'head',d:a=>{ a.b(0,a.hy+0.18,0,0.56,0.40,0.56,C(0x7ae4a0));
+   a.b(0,a.hy-0.04,0,0.60,0.14,0.60,C(0x5cc984));
+   for(const s of[-1,1]) a.b(s*0.14,a.hy+0.20,0.30,0.10,0.12,0.03,C(0x241f2b)); }},
+ {id:'donut',n:'Donut Hat',g:'Food',sl:'head',d:a=>{ for(let k=0;k<14;k++){const h=k/14*6.2832;
+   a.s(Math.cos(h)*0.34,a.top+0.12,Math.sin(h)*0.34,0.15,C(0xf0b7d0));
+   if(k%3===0) a.s(Math.cos(h)*0.34,a.top+0.24,Math.sin(h)*0.34,0.05,C(0xffd34d)); }}},
+ {id:'cupcake',n:'Cupcake Hat',g:'Food',sl:'head',d:a=>{ a.y(0,a.top+0.14,0,0.34,0.26,C(0xe8c37a));
+   a.s(0,a.top+0.36,0,0.32,C(0xff9ecb),0.30); a.s(0,a.top+0.52,0,0.10,C(0xe0273f)); }},
+ {id:'wings',n:'Angel Wings',g:'Angel',sl:'back',d:a=>{ for(const s of[-1,1]){
+   a.b(s*0.42,-0.10,-0.34,0.20,0.86,0.10,C(0xffffff),s*0.36);
+   a.b(s*0.62,-0.30,-0.34,0.16,0.54,0.09,C(0xf2f5fb),s*0.52); }}},
+ {id:'jetpack',n:'Jet Pack',g:'Space',sl:'back',d:a=>{ for(const s of[-1,1]){
+   a.y(s*0.20,-0.16,-0.38,0.14,0.66,C(0xa9b2bf));
+   a.k(s*0.20,-0.58,-0.38,0.11,0.20,C(0xff8c1a),3.1416); }
+   a.b(0,-0.10,-0.36,0.28,0.30,0.10,C(0x555d68)); }},
+ {id:'cape',n:'Hero Cape',g:'Hero',sl:'back',d:a=>{ a.b(0,-0.20,-0.32,0.72,0.96,0.07,C(0xe0273f),0.04);
+   a.b(0,-0.62,-0.30,0.60,0.24,0.06,C(0xb01f33)); a.b(0,0.26,-0.30,0.44,0.12,0.08,C(0xffd34d)); }},
+ {id:'bouncy',n:'Bouncy Shoes',g:'Silly',sl:'feet',d:a=>{ for(const s of[-1,1]){
+   a.y(s*0.22,-1.42,0.04,0.24,0.20,C(0xff4d6d));
+   for(let k=0;k<3;k++) a.y(s*0.22,-1.54-k*0.09,0.04,0.18-k*0.02,0.06,C(0xa9b2bf)); }}},
+ {id:'kart',n:'Go-Kart',g:'Mounts',sl:'mount',d:a=>{ a.b(0,-1.66,0.06,1.10,0.34,1.60,C(0xe0273f));
+   a.b(0,-1.44,-0.42,0.92,0.22,0.44,C(0xb01f33));
+   for(const s of[-1,1]) for(const z of[-0.56,0.56])
+     a.y(s*0.60,-1.74,z,0.26,0.18,C(0x241f2b),1.5708);
+   a.y(0,-1.30,0.44,0.22,0.06,C(0x241f2b),1.5708); }},
+ {id:'horse',n:'Hobby Horse',g:'Mounts',sl:'mount',d:a=>{ a.b(0,-1.52,0.02,0.52,0.46,1.40,C(0x8a5a2a));
+   a.b(0,-1.14,0.62,0.34,0.50,0.34,C(0x8a5a2a),-0.25); a.b(0,-0.94,0.80,0.30,0.28,0.40,C(0x9c6a34));
+   for(const s of[-1,1]) a.k(s*0.10,-0.76,0.62,0.07,0.18,C(0x6d431f));
+   for(const s of[-1,1]) for(const z of[-0.44,0.48]) a.y(s*0.20,-1.90,z,0.09,0.62,C(0x6d431f));
+   a.b(0,-1.20,-0.56,0.10,0.46,0.30,C(0xf0ead6),0.4); }},
+ {id:'motorbike',n:'Motorbike',g:'Mounts',sl:'mount',d:a=>{ a.b(0,-1.52,0.04,0.44,0.40,1.30,C(0x2f4f9a));
+   a.b(0,-1.28,-0.30,0.38,0.24,0.50,C(0x1f3a63));
+   for(const z of[-0.60,0.62]) a.y(0,-1.78,z,0.30,0.16,C(0x241f2b),1.5708);
+   a.y(0,-1.22,0.58,0.42,0.06,C(0xa9b2bf),1.5708); a.b(0,-1.06,0.62,0.20,0.22,0.06,C(0x9fd8ff)); }},
+ {id:'babybonnet',n:'Baby Bonnet',g:'Silly',sl:'head',d:a=>{ a.s(0,a.hy+0.14,-0.04,0.44,C(0xffd7e6),0.34);
+   a.y(0,a.top-0.02,0,0.46,0.10,C(0xffffff)); a.b(0,a.hy-0.30,0.34,0.26,0.18,0.06,C(0x9fd8ff));
+   a.s(0,a.hy-0.34,0.42,0.09,C(0xff9ecb)); }},
+ {id:'beachring',n:'Swim Ring',g:'Beach',sl:'back',d:a=>{ for(let k=0;k<16;k++){const h=k/16*6.2832;
+   a.s(Math.cos(h)*0.58,-0.24,Math.sin(h)*0.30,0.16,k%2?C(0xffffff):C(0xff8c1a)); }}},
+ {id:'sunhat',n:'Sun Hat',g:'Beach',sl:'head',d:a=>{ a.y(0,a.top+0.05,0,0.80,0.06,C(0xffe9c0));
+   a.y(0,a.top+0.20,0,0.34,0.24,C(0xffe9c0)); a.y(0,a.top+0.12,0,0.36,0.07,C(0x9fd8ff)); }},
+ {id:'ninjaband',n:'Ninja Band',g:'Ninja',sl:'head',d:a=>{ a.b(0,a.hy+0.22,0,0.74,0.13,0.70,C(0x241f2b));
+   a.b(0,a.hy+0.22,0.36,0.30,0.11,0.03,C(0xe0273f));
+   a.b(-0.30,a.hy+0.18,-0.36,0.10,0.10,0.44,C(0x241f2b),0.3); }},
+];
+const ACC_BY_ID={}; ACCS.forEach(a=>ACC_BY_ID[a.id]=a);
+
+/* five costumes per climber — each recolours the outfit, some add a detail */
+const COSTUMES=[
+ [ {id:'hz-beach',n:'Beach Day',over:{shirt:C(0x4dd6c1),legs:C(0xffd34d),shoe:C(0xffffff),jacket:null}},
+   {id:'hz-ninja',n:'Ninja',over:{shirt:C(0x2b2b33),legs:C(0x1d1a22),shoe:C(0x241f2b),jacket:C(0x24242c)},
+    d:a=>{ a.b(0.02,-0.10,-0.34,0.07,0.07,1.10,C(0x8a5a2a),0.5);
+           a.b(0.02,-0.10,-0.34,0.10,0.10,0.28,C(0xa9b2bf),0.5); }},
+   {id:'hz-angel',n:'Angel',over:{shirt:C(0xffffff),legs:C(0xf2f5fb),shoe:C(0xffe07a),jacket:null},
+    d:a=>{ for(const s of[-1,1]) a.b(s*0.40,-0.10,-0.32,0.18,0.78,0.09,C(0xffffff),s*0.34);
+           for(let k=0;k<14;k++){const h=k/14*6.2832;
+             a.s(Math.cos(h)*0.28,a.top+0.38,Math.sin(h)*0.28,0.05,C(0xffe07a));} }},
+   {id:'hz-easter',n:'Easter Bunny',over:{shirt:C(0xffffff),legs:C(0xffd7e6),shoe:C(0xff9ecb),jacket:null},
+    d:a=>{ for(const s of[-1,1]){ a.b(s*0.15,a.top+0.34,0,0.14,0.68,0.10,C(0xffffff),s*0.13);
+             a.b(s*0.15,a.top+0.32,0.05,0.07,0.48,0.04,C(0xffb6d5),s*0.13); }
+           a.s(0,-0.56,-0.32,0.16,C(0xffffff)); }},
+   {id:'hz-rainbow',n:'Rainbow',over:{shirt:C(0xff4d6d),legs:C(0x4dc3ff),shoe:C(0xffd34d),jacket:null},
+    d:a=>{ for(let k=0;k<5;k++) a.b(0,-0.36+k*0.18,0.26,0.74,0.09,0.03,
+             [C(0xff4d6d),C(0xff8c1a),C(0xffd34d),C(0x9bd35a),C(0x9a7bff)][k]); }} ],
+ [ {id:'ro-princess',n:'Princess',over:{shirt:C(0xffd7e6),skirt:C(0xff9ecb),shoe:C(0xffe07a)},
+    d:a=>{ a.y(0,a.top+0.06,0,0.30,0.06,C(0xffe07a)); a.k(0,a.top+0.18,0.14,0.06,0.20,C(0xffe07a)); }},
+   {id:'ro-mermaid',n:'Mermaid',over:{shirt:C(0x7ae4c1),skirt:C(0x4dc3ff),legs:C(0x4dc3ff),shoe:C(0x2f8b7f)},
+    d:a=>{ for(const s of[-1,1]) a.b(s*0.30,-1.20,0.16,0.34,0.10,0.42,C(0x4dd6c1),s*0.5);
+           a.s(-0.30,0.24,0.10,0.09,C(0xff9ecb)); }},
+   {id:'ro-fairy',n:'Fairy',over:{shirt:C(0xc9a3ff),skirt:C(0xbfe6ff),shoe:C(0x9bd35a)},
+    d:a=>{ for(const s of[-1,1]){ a.b(s*0.36,-0.04,-0.30,0.16,0.56,0.06,C(0xbfe6ff),s*0.4);
+             a.b(s*0.30,-0.36,-0.30,0.13,0.36,0.05,C(0xffd7e6),s*0.6); } }},
+   {id:'ro-candy',n:'Candy',over:{shirt:C(0xff9ecb),skirt:C(0xffffff),shoe:C(0xff4d6d)},
+    d:a=>{ for(let k=0;k<4;k++) a.b(0,-0.34+k*0.22,0.26,0.72,0.10,0.03,C(0xffffff),0.5); }},
+   {id:'ro-popstar',n:'Popstar',over:{shirt:C(0x9a7bff),skirt:C(0x241f2b),shoe:C(0xffd34d)},
+    d:a=>{ a.b(0,a.hy+0.20,0,0.10,0.14,0.62,C(0x241f2b));
+           for(const s of[-1,1]) a.y(s*0.36,a.hy,0,0.14,0.10,C(0xff4d6d),1.5708); }} ],
+ [ {id:'wi-witch',n:'Witch',over:{shirt:C(0x3b2b7a),legs:C(0x241f2b),shoe:C(0x9a7bff)},
+    d:a=>{ a.y(0,a.top+0.05,0,0.62,0.06,C(0x241f2b)); a.k(0,a.top+0.44,0,0.28,0.78,C(0x241f2b),0.14); }},
+   {id:'wi-forest',n:'Forest Elf',over:{shirt:C(0x2f8b3f),legs:C(0x6d431f),shoe:C(0x4f9a3a)},
+    d:a=>{ for(const s of[-1,1]) a.k(s*0.30,a.hy+0.06,-0.04,0.09,0.28,C(0xffd9b0),s*1.2);
+           for(let k=0;k<5;k++) a.b(0,0.28,0.04,0.62,0.05,0.10,C(0x4f9a3a),k/5*3.1416); }},
+   {id:'wi-snow',n:'Snow Queen',over:{shirt:C(0xd8ecff),legs:C(0xbfe6ff),shoe:C(0xffffff)},
+    d:a=>{ for(let k=0;k<5;k++){const h=k/5*6.2832;
+             a.k(Math.cos(h)*0.30,a.top+0.24,Math.sin(h)*0.30,0.05,0.28,C(0xd8ecff)); } }},
+   {id:'wi-garden',n:'Garden',over:{shirt:C(0xffd34d),legs:C(0x4f9a3a),shoe:C(0xc98b52)},
+    d:a=>{ for(let k=0;k<6;k++){const h=k/6*6.2832;
+             a.s(Math.cos(h)*0.32,a.top+0.10,Math.sin(h)*0.32,0.07,C(0xff9ecb)); } }},
+   {id:'wi-star',n:'Stargazer',over:{shirt:C(0x2b2b6b),legs:C(0x1a1a3a),shoe:C(0xffd34d)},
+    d:a=>{ for(let k=0;k<7;k++){const h=k*1.7;
+             a.s(Math.cos(h)*0.34,-0.20+Math.sin(h*1.3)*0.34,0.26,0.045,C(0xffe07a)); } }} ],
+ [ {id:'mi-burglar',n:'Cat Burglar',over:{shirt:C(0x2b2b33),legs:C(0x1d1a22),shoe:C(0x241f2b)},
+    d:a=>{ a.b(0,a.hy+0.05,0.34,0.62,0.16,0.04,C(0x241f2b));
+           for(const s of[-1,1]) a.k(s*0.24,a.top+0.14,0,0.14,0.28,C(0x2f2530)); }},
+   {id:'mi-vampire',n:'Vampire',over:{shirt:C(0x241f2b),legs:C(0x2b2b33),shoe:C(0xd0453f)},
+    d:a=>{ a.b(0,-0.16,-0.30,0.70,0.90,0.06,C(0xd0453f));
+           a.b(0,0.28,-0.28,0.46,0.14,0.08,C(0x241f2b)); }},
+   {id:'mi-cyber',n:'Cyber',over:{shirt:C(0x2b2b6b),legs:C(0x1a1a3a),shoe:C(0x4dc3ff)},
+    d:a=>{ a.b(0,a.hy+0.06,0.35,0.64,0.14,0.04,C(0x4dc3ff));
+           a.y(0.30,a.top+0.18,0,0.03,0.26,C(0xa9b2bf)); a.s(0.30,a.top+0.34,0,0.05,C(0xff4d6d)); }},
+   {id:'mi-panda',n:'Panda',over:{shirt:C(0xffffff),legs:C(0x241f2b),shoe:C(0x241f2b)},
+    d:a=>{ for(const s of[-1,1]){ a.s(s*0.28,a.top+0.10,0,0.15,C(0x241f2b));
+             a.b(s*0.16,a.hy+0.04,0.34,0.20,0.20,0.03,C(0x241f2b)); } }},
+   {id:'mi-bat',n:'Bat',over:{shirt:C(0x3b2b5a),legs:C(0x241f2b),shoe:C(0x9a7bff)},
+    d:a=>{ for(const s of[-1,1]) a.b(s*0.46,-0.14,-0.30,0.24,0.62,0.06,C(0x3b2b5a),s*0.5);
+           for(const s of[-1,1]) a.k(s*0.22,a.top+0.14,0,0.10,0.24,C(0x3b2b5a)); }} ],
+ [ {id:'ma-cowboy',n:'Cowboy',over:{shirt:C(0x9fd8ff),jacket:C(0x8a5a2a),legs:C(0x2f4f9a),shoe:C(0x6d431f)},
+    d:a=>{ a.y(0,a.top+0.06,0,0.60,0.08,C(0x8a5a2a)); a.y(0,a.top+0.24,0,0.32,0.28,C(0x9c6a34)); }},
+   {id:'ma-astro',n:'Astronaut',over:{shirt:C(0xe8eef6),jacket:C(0xd8dee6),legs:C(0xe8eef6),shoe:C(0xa9b2bf)},
+    d:a=>{ a.b(0,-0.10,-0.34,0.46,0.62,0.16,C(0xd8dee6));
+           a.b(0,0.10,0.26,0.24,0.14,0.03,C(0x4dc3ff)); }},
+   {id:'ma-football',n:'Footballer',over:{shirt:C(0x2f8b3f),legs:C(0xffffff),shoe:C(0xff4d6d),jacket:null},
+    d:a=>{ a.b(0,0.02,0.26,0.26,0.26,0.03,C(0xffffff)); }},
+   {id:'ma-robot',n:'Robot',over:{shirt:C(0xa9b2bf),jacket:C(0x8a919c),legs:C(0x555d68),shoe:C(0x241f2b)},
+    d:a=>{ a.y(0,a.top+0.22,0,0.03,0.28,C(0xa9b2bf)); a.s(0,a.top+0.40,0,0.08,C(0xff4d6d));
+           a.b(0,-0.02,0.27,0.30,0.18,0.03,C(0x4dc3ff)); }},
+   {id:'ma-lumber',n:'Lumberjack',over:{shirt:C(0xd0453f),jacket:C(0x8a3b33),legs:C(0x2b3a5a),shoe:C(0x6d431f)},
+    d:a=>{ for(let k=0;k<3;k++) a.b(0,-0.30+k*0.24,0.26,0.72,0.05,0.03,C(0x241f2b)); }} ],
+ [ {id:'sa-diver',n:'Diver',over:{shirt:C(0x1f3a63),legs:C(0x1f3a63),shoe:C(0x4dd6c1)},
+    d:a=>{ for(const s of[-1,1]) a.y(s*0.18,-0.14,-0.36,0.13,0.62,C(0xffd34d));
+           a.b(0,a.hy+0.06,0.36,0.50,0.20,0.06,C(0x9fd8ff)); }},
+   {id:'sa-pirate',n:'Pirate',over:{shirt:C(0xffffff),jacket:C(0x8a3b33),legs:C(0x241f2b),shoe:C(0x6d431f)},
+    d:a=>{ a.b(0,a.top+0.10,0,0.74,0.16,0.40,C(0x241f2b),0.10);
+           a.b(0.16,a.hy+0.05,0.34,0.20,0.16,0.03,C(0x241f2b)); }},
+   {id:'sa-karate',n:'Karate',over:{shirt:C(0xffffff),legs:C(0xffffff),shoe:C(0x241f2b),jacket:null},
+    d:a=>{ a.b(0,-0.34,0.02,0.82,0.14,0.54,C(0x241f2b)); }},
+   {id:'sa-racer',n:'Racer',over:{shirt:C(0xe0273f),jacket:C(0xffffff),legs:C(0xe0273f),shoe:C(0x241f2b)},
+    d:a=>{ a.b(0,0.06,0.26,0.20,0.20,0.03,C(0xffd34d));
+           a.s(0,a.hy+0.10,0,0.46,C(0xe0273f),0.34); a.b(0,a.hy+0.02,0.38,0.52,0.24,0.05,C(0x241f2b)); }},
+   {id:'sa-hero',n:'Super Hero',over:{shirt:C(0x2f4f9a),legs:C(0x2f4f9a),shoe:C(0xe0273f),jacket:null},
+    d:a=>{ a.b(0,-0.20,-0.32,0.70,0.92,0.06,C(0xe0273f));
+           a.b(0,0.02,0.26,0.28,0.26,0.03,C(0xffd34d)); }} ],
+ [ {id:'po-tiger',n:'Tiger',over:{skin:C(0xffa726),hair:C(0xe08a10),shirt:C(0xff8c1a),legs:C(0xe07a10),shoe:C(0x8a4a10)},
+    d:a=>{ for(let k=0;k<4;k++) a.b(0,-0.20+k*0.20,0.26,0.10,0.14,0.03,C(0x241f2b)); }},
+   {id:'po-space',n:'Space Cat',over:{shirt:C(0xe8eef6),legs:C(0x2b2b6b),shoe:C(0xa9b2bf)},
+    d:a=>{ a.s(0,a.hy,0,0.50,C(0xe8eef6)); a.b(0,a.hy+0.02,0.40,0.54,0.34,0.06,C(0x2e4d6b)); }},
+   {id:'po-chef',n:'Chef Cat',over:{shirt:C(0xffffff),legs:C(0xd8dee6),shoe:C(0x241f2b)},
+    d:a=>{ a.y(0,a.top+0.10,0,0.34,0.18,C(0xffffff)); a.s(0,a.top+0.38,0,0.34,C(0xffffff),0.40); }},
+   {id:'po-wizard',n:'Wizard Cat',over:{shirt:C(0x3b2b7a),legs:C(0x2b2b5a),shoe:C(0xffd34d)},
+    d:a=>{ a.y(0,a.top+0.05,0,0.58,0.06,C(0x3b2b7a)); a.k(0,a.top+0.44,0,0.28,0.78,C(0x3b2b7a)); }},
+   {id:'po-santa',n:'Santa Cat',over:{shirt:C(0xe0273f),legs:C(0xb01f33),shoe:C(0x241f2b)},
+    d:a=>{ a.y(0,a.top+0.04,0,0.42,0.12,C(0xffffff)); a.k(0,a.top+0.32,-0.06,0.30,0.52,C(0xe0273f),0.24);
+           a.b(0,-0.34,0.02,0.82,0.14,0.54,C(0x241f2b)); }} ],
+ [ {id:'bi-hero',n:'Super Pup',over:{shirt:C(0x2f8b3f),legs:C(0x1f6b2f),shoe:C(0xffd34d)},
+    d:a=>{ a.b(0,-0.20,-0.32,0.68,0.90,0.06,C(0x2f8b3f));
+           a.b(0,0.02,0.26,0.26,0.24,0.03,C(0xffd34d)); }},
+   {id:'bi-fire',n:'Fire Dog',over:{shirt:C(0xd0453f),legs:C(0x8a3b33),shoe:C(0x241f2b)},
+    d:a=>{ a.s(0,a.hy+0.16,0,0.42,C(0xd0453f),0.30);
+           a.b(0,a.top+0.04,-0.20,0.48,0.07,0.28,C(0xd0453f),-0.16); }},
+   {id:'bi-sheep',n:'Sheepdog',over:{skin:C(0xf0ead6),hair:C(0xd8cbb0),shirt:C(0x8a5a2a),legs:C(0x6d431f),shoe:C(0x4a2f14)},
+    d:a=>{ for(let k=0;k<8;k++){const h=k/8*6.2832;
+             a.s(Math.cos(h)*0.36,a.hy+0.22,Math.sin(h)*0.36,0.16,C(0xf0ead6)); } }},
+   {id:'bi-hotdog',n:'Hot Dog',over:{shirt:C(0xe8c37a),legs:C(0xd0a45a),shoe:C(0xc98b52)},
+    d:a=>{ a.y(0,-0.16,0.24,0.16,0.80,C(0xd0453f),1.5708);
+           for(let k=0;k<5;k++) a.b(0,-0.44+k*0.20,0.30,0.30,0.05,0.05,C(0xffd34d),0.4); }},
+   {id:'bi-detective',n:'Detective',over:{shirt:C(0xc9a37a),jacket:C(0xa8825a),legs:C(0x6d5a3a),shoe:C(0x4a3a22)},
+    d:a=>{ a.y(0,a.top+0.05,0,0.58,0.07,C(0xa8825a)); a.y(0,a.top+0.20,0,0.34,0.24,C(0xa8825a)); }} ],
+];
+const COS_BY_ID={}; COSTUMES.forEach((list,ci)=>list.forEach(c=>{ c.ci=ci; COS_BY_ID[c.id]=c; }));
 let chosen=0; try{ chosen=Math.max(0,Math.min(CHARACTERS.length-1, parseInt(localStorage.getItem('ft_char')||'0'))); }catch(e){}
+
+/* =========================================================================
+   PLAYER PROFILES
+   A local "account" per name: the unlocks it has earned and what it is
+   wearing. Several children can share one iPad and keep separate progress.
+   ========================================================================= */
+const BLANK_PROFILE=()=>({beaten:0, accs:[], cos:[], equipAcc:null, equipCos:{}});
+let profiles={}, profileName='';
+try{ profiles=JSON.parse(localStorage.getItem('ft_profiles')||'{}')||{}; }catch(e){ profiles={}; }
+try{ profileName=localStorage.getItem('ft_who')||''; }catch(e){}
+if(profileName && !profiles[profileName]) profileName='';
+function prof(){ return (profileName && profiles[profileName]) ? profiles[profileName] : null; }
+function saveProfiles(){ try{ localStorage.setItem('ft_profiles',JSON.stringify(profiles));
+  localStorage.setItem('ft_who',profileName); }catch(e){} }
+function useProfile(name){ name=(name||'').trim().slice(0,14); if(!name) return false;
+  if(!profiles[name]) profiles[name]=BLANK_PROFILE();
+  profileName=name; saveProfiles(); return true; }
+function hasAcc(id){ const p=prof(); return !!p && p.accs.indexOf(id)>=0; }
+function hasCos(id){ const p=prof(); return !!p && p.cos.indexOf(id)>=0; }
+function myAccs(){ const p=prof(); return p? ACCS.filter(a=>p.accs.indexOf(a.id)>=0) : []; }
+function myCostumes(ci){ const p=prof(); return p? COSTUMES[ci].filter(c=>p.cos.indexOf(c.id)>=0) : []; }
+// what the chosen climber is wearing right now
+function currentLook(){ const p=prof(); if(!p) return null;
+  const cid=p.equipCos[chosen];
+  return { cos: (cid && hasCos(cid)) ? COS_BY_ID[cid] : null,
+           acc: (p.equipAcc && hasAcc(p.equipAcc)) ? ACC_BY_ID[p.equipAcc] : null }; }
+// beating all three towers earns something: the fruit crown the very first
+// time, then a random locked accessory or costume every time after that
+function grantUnlock(){
+  const p=prof(); if(!p) return null;
+  let got=null;
+  if(p.beaten===0 && p.accs.indexOf('fruitcrown')<0){
+    p.accs.push('fruitcrown'); p.equipAcc='fruitcrown';
+    got={kind:'acc', item:ACC_BY_ID['fruitcrown']};
+  } else {
+    const pool=ACCS.filter(a=>p.accs.indexOf(a.id)<0).map(a=>({kind:'acc',item:a}))
+      .concat(COSTUMES.reduce((all,l)=>all.concat(l),[])
+        .filter(c=>p.cos.indexOf(c.id)<0).map(c=>({kind:'cos',item:c})));
+    if(pool.length){ got=pool[Math.floor(Math.random()*pool.length)];
+      if(got.kind==='acc') p.accs.push(got.item.id); else p.cos.push(got.item.id); }
+  }
+  p.beaten++; saveProfiles(); return got;
+}
+
 
 /* Disney-style glove: rounded white mitt with four fingers and a thumb */
 function drawGlove(B,S, lx,ly,lz, col, flip){
@@ -561,7 +933,9 @@ function drawGlove(B,S, lx,ly,lz, col, flip){
   S(lx,ly+0.13,lz, 0.155, col, 0.10);                               // cuff
 }
 
-function drawChar(ch, x,y,z, face, walk, airborne, t, climbing, cheering){
+function drawChar(ch, x,y,z, face, walk, airborne, t, climbing, cheering, look){
+  // a costume simply repaints the climber, so merge it in before anything draws
+  if(look && look.cos) ch=Object.assign({}, ch, look.cos.over);
   const cs=Math.cos(face), sn=Math.sin(face);
   // The soles are modelled at local y=-1.32 but the collision floor is -hh (-0.9),
   // so lift every part by this much or the character sinks into the platform.
@@ -746,6 +1120,15 @@ function drawChar(ch, x,y,z, face, walk, airborne, t, climbing, cheering){
     B(0,hy+0.36,0, 0.64,0.12,0.60, ch.hair);
     for(let k=0;k<3;k++) S(0,-0.45+k*0.10,-0.40-k*0.18, 0.12, ch.hair, 0.20);
   }
+
+  /* ---- costume extras and the equipped accessory ----
+     Both are authored in the climber's own local space, so they inherit the
+     facing and the walk bob for free. */
+  if(look && (look.cos||look.acc)){
+    const A={ b:B, s:S, k:K, y:Cy, hy:hy, top:hy+0.33, ch:ch, t:t };
+    if(look.cos && look.cos.d) look.cos.d(A);
+    if(look.acc && look.acc.d) look.acc.d(A);
+  }
 }
 
 /* =========================================================================
@@ -782,6 +1165,7 @@ const FRUIT={
   // candy platforms, mixed in for variety
   lollipop:  { style:'candy_lolli', base:C(0xff4fa3), swirl:C(0xffffff), stick:C(0xffffff) },
   gumdrop:   { style:'candy_gum',   body:C(0x7ee0e0), band:C(0xffffff),  sugar:C(0xffffff) },
+
 };
 
 /* A halved fruit: the dome hangs BELOW the cut plane so nothing ever pokes up
@@ -931,29 +1315,35 @@ function drawCage(c,t){
 }
 /* the folk you meet: a herald, a princess, a king, a queen */
 function drawPerson(p,t,T){
+  // These are grown-ups and the climbers are children, so they stand a little
+  // taller. Everything below is authored at child scale and then scaled up,
+  // which keeps the proportions honest.
+  const SC=1.34;
   const royal = p.kind==='king'||p.kind==='queen';
   const base = p.kind==='herald' ? C(0x5f7dd6) : T.coinCol;
   const gown = p.kind==='king' ? mixc(base,[0,0,0],0.30)
              : p.kind==='queen'? mixc(base,[1,1,1],0.22) : base;
   const skin=C(0xf6c9a0), a0=p.ang||0;
   // freed princesses hop for joy; greeters clap
-  const cheer = !!p.cheer, hop = cheer? Math.abs(Math.sin(t*5.5))*0.55 : 0;
+  const cheer = !!p.cheer, hop = cheer? Math.abs(Math.sin(t*5.5))*0.62 : 0;
   const y=p.y+hop;
-  const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(p.x+lx*Math.cos(a0)+lz*Math.sin(a0), y+ly,
-      p.z-lx*Math.sin(a0)+lz*Math.cos(a0), sx,sy,sz, c, a0, rz);
-  cyl(p.x, y+0.46, p.z, 0.42, 0.92, gown);                 // skirt / robe
-  cyl(p.x, y+0.62, p.z, 0.47, 0.14, mixc(gown,[1,1,1],0.22));
-  cyl(p.x, y+1.06, p.z, 0.30, 0.36, gown);                 // bodice
+  const wx=(lx,lz)=>p.x+(lx*Math.cos(a0)+lz*Math.sin(a0))*SC;
+  const wz=(lx,lz)=>p.z+(-lx*Math.sin(a0)+lz*Math.cos(a0))*SC;
+  const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(wx(lx,lz), y+ly*SC, wz(lx,lz), sx*SC,sy*SC,sz*SC, c, a0, rz);
+  const Y=(lx,ly,lz,r,h,c)=>cyl(wx(lx,lz), y+ly*SC, wz(lx,lz), r*SC, h*SC, c);
+  const K=(lx,ly,lz,r,h,c)=>cone(wx(lx,lz), y+ly*SC, wz(lx,lz), r*SC, h*SC, c);
+  Y(0,0.46,0, 0.42,0.92, gown);                            // skirt / robe
+  Y(0,0.62,0, 0.47,0.14, mixc(gown,[1,1,1],0.22));
+  Y(0,1.06,0, 0.30,0.36, gown);                            // bodice
   B(0,1.32,0, 0.30,0.18,0.26, skin);                       // neck
   B(0,1.62,0, 0.46,0.44,0.42, skin);                       // head
   B(0,1.85,0, 0.50,0.14,0.46, p.kind==='king'? C(0x8a6a4a) : C(0x6b3f1d));
   if(!royal && p.kind!=='herald') B(0,1.56,-0.27, 0.42,0.58,0.10, C(0x6b3f1d)); // long hair
   // crown for the royals, a slim tiara otherwise
   const cw = royal? 0.30 : 0.20;
-  cyl(p.x, y+1.94, p.z, cw, royal?0.15:0.08, C(0xffd34d));
-  for(let k=0;k<5;k++){ const a=a0+k/5*6.2832;
-    cone(p.x+Math.cos(a)*cw*0.82, y+2.06, p.z+Math.sin(a)*cw*0.82,
-         0.055, royal?0.22:0.13, C(0xffd34d)); }
+  Y(0,1.94,0, cw, royal?0.15:0.08, C(0xffd34d));
+  for(let i2=0;i2<5;i2++){ const a=i2/5*6.2832;
+    K(Math.cos(a)*cw*0.82, 2.06, Math.sin(a)*cw*0.82, 0.055, royal?0.22:0.13, C(0xffd34d)); }
   // arms
   if(cheer){                                               // both arms up
     B(-0.38,1.28, 0.02, 0.16,0.56,0.16, skin, 0.28);
@@ -1829,7 +2219,11 @@ function winGame(){ running=false; setState('win'); Audio_.sfx('win'); Audio_.st
   inp.value=last||CHARACTERS[chosen].name; inp.disabled=false;
   btn.disabled=false; btn.textContent='Save';
   document.getElementById('nameLabel').textContent='Put your name on the leaderboard!';
-  document.getElementById('winStats').innerHTML='You climbed all three towers in <b>'+fmtTime(runTime)+'</b>! 🍒🍓🫐'; }
+  document.getElementById('winStats').innerHTML='You climbed all three towers in <b>'+fmtTime(runTime)+'</b>! 🍒🍓🫐';
+  const note=document.getElementById('unlockNote'), got=grantUnlock();
+  if(!got) note.textContent = prof() ? '🎉 You have unlocked everything there is!' : '';
+  else if(got.kind==='acc') note.innerHTML='🎁 Unlocked accessory: <b>'+got.item.n+'</b> ('+got.item.g+')';
+  else note.innerHTML='🎁 Unlocked costume for '+CHARACTERS[got.item.ci].name+': <b>'+got.item.n+'</b>'; }
 function saveWinName(){
   if(savedThisWin || pendingTime==null) return;
   const inp=document.getElementById('nameInput'), btn=document.getElementById('nameSave');
@@ -1939,7 +2333,7 @@ function render(t){
   if(!(player.dead && (player.deadKind==='water' || Math.floor(player.deadT*10)%2===0)))
     drawChar(CHARACTERS[chosen], player.x, player.y, player.z, player.facing, player.walk,
              !player.onGround || !!player.swing, t, player.climbing,
-             player.celebrateUntil>t);
+             player.celebrateUntil>t, currentLook());
 }
 
 function drawTrampoline(s,t){
@@ -2021,7 +2415,7 @@ function renderCharSelect(t){
   cyl(0,-1.70,0, 2.0, 0.14, C(0x3f9ac0));
   for(let i=0;i<10;i++){ const a=i/10*6.2832+csAng*0.4;
     sph(Math.cos(a)*2.0,-1.68,Math.sin(a)*2.0, 0.20, C(0x66c6e8)); }
-  drawChar(CHARACTERS[chosen], 0,-0.28,0, csAng*1.6, t*3.0, false, t);
+  drawChar(CHARACTERS[chosen], 0,-0.28,0, csAng*1.6, t*3.0, false, t, false, false, previewLook());
 }
 
 /* =========================================================================
@@ -2071,22 +2465,28 @@ function recenterCam(){ cam.yaw=Math.PI; cam.pitch=0.42; }
    SCREENS
    ========================================================================= */
 const screens={ menu:'mainMenu', options:'optionsScreen', leader:'leaderScreen', char:'charScreen',
-  pause:'pauseScreen', level:'levelScreen', win:'winScreen', over:'overScreen', quit:'quitScreen' };
+  pause:'pauseScreen', level:'levelScreen', win:'winScreen', over:'overScreen', quit:'quitScreen',
+  profile:'profileScreen' };
 function hideAllScreens(){ Object.values(screens).forEach(id=>document.getElementById(id).classList.add('hidden')); }
 function setState(s){
   state=s; hideAllScreens();
+  const dr=document.getElementById('accDrawer'); if(dr) dr.classList.add('hidden');
   document.getElementById('hud').style.display=(s==='play'||s==='pause')?'block':'none';
   const menuish=(s!=='play' && s!=='pause');
   document.getElementById('menuBG').classList.toggle('hidden', !(menuish && s!=='char'));
   if(screens[s]) document.getElementById(screens[s]).classList.remove('hidden');
   if(s==='leader') fillLeaderboard();
   if(s==='char') updateCharUI();
+  if(s==='menu') updateMenuWho();
 }
 function togglePause(){ if(state==='play'){ running=false; setState('pause'); }
   else if(state==='pause'){ setState('play'); running=true; } }
 
 function click(id,fn){ document.getElementById(id).addEventListener('click',()=>{ Audio_.init(); Audio_.sfx('click'); fn(); }); }
-click('beginBtn',()=>setState('char'));
+click('beginBtn',()=>{
+  if(!prof()){ setState('profile'); updateProfileScreen();
+    showMsg('Pick a name so your unlocks get saved 💾',2200); return; }
+  setState('char'); });
 click('optionsBtn',()=>setState('options'));
 click('leaderBtn',()=>setState('leader'));
 click('quitBtn',()=>{ setState('quit'); Audio_.stopMusic(); try{ window.close(); }catch(e){} });
@@ -2094,6 +2494,15 @@ click('optBack',()=>setState('menu'));
 click('lbBack',()=>setState('menu'));
 click('quitBack',()=>setState('menu'));
 click('charPrev',()=>{ chosen=(chosen+CHARACTERS.length-1)%CHARACTERS.length; updateCharUI(); });
+click('cosUp',()=>stepCostume(1));
+click('cosDown',()=>stepCostume(-1));
+click('accBtn',()=>openAccDrawer());
+click('accClose',()=>closeAccDrawer());
+click('profileBtn',()=>{ setState('profile'); updateProfileScreen(); });
+click('profBack',()=>{ setState('menu'); updateMenuWho(); });
+click('profSave',()=>{ const v=document.getElementById('profInput').value;
+  if(useProfile(v)){ updateProfileScreen(); updateMenuWho(); showMsg('Saved! Playing as '+profileName,1500); }
+  else showMsg('Type a name first 🙂',1400); });
 click('charNext',()=>{ chosen=(chosen+1)%CHARACTERS.length; updateCharUI(); });
 click('charGo',()=>startRun());
 click('resumeBtn',()=>togglePause());
@@ -2122,7 +2531,65 @@ function fillLeaderboard(){ const s=loadScores(), el=document.getElementById('lb
 function updateCharUI(){ const c=CHARACTERS[chosen];
   document.getElementById('charName').textContent=c.name;
   const dots=document.getElementById('charDots'); dots.innerHTML='';
-  for(let i=0;i<CHARACTERS.length;i++){ const d=document.createElement('div'); d.className='dot'+(i===chosen?' on':''); dots.appendChild(d); } }
+  for(let i=0;i<CHARACTERS.length;i++){ const d=document.createElement('div'); d.className='dot'+(i===chosen?' on':''); dots.appendChild(d); }
+  updateCosUI(); }
+
+/* ---- costumes: the up/down arrows step through the ones you have earned,
+   with "Original" always available as the first entry ---- */
+function cosList(){ return [null].concat(myCostumes(chosen)); }
+function cosIndex(){ const p=prof(); if(!p) return 0;
+  const id=p.equipCos[chosen], l=cosList();
+  const i=l.findIndex(c=>c && c.id===id); return i<0?0:i; }
+function stepCostume(dir){ const p=prof(); if(!p) return;
+  const l=cosList(); if(l.length<2){ showMsg('Beat the game to earn costumes! 🎁',1600); return; }
+  const n=(cosIndex()+dir+l.length)%l.length;
+  p.equipCos[chosen]= l[n] ? l[n].id : null; saveProfiles(); updateCosUI(); Audio_.sfx('click'); }
+function updateCosUI(){ const l=cosList(), c=l[cosIndex()];
+  const owned=l.length-1;
+  document.getElementById('cosName').textContent =
+    'Costume: '+(c? c.n : 'Original')+(owned? '  ('+(cosIndex()+1)+'/'+l.length+')' : '  — none earned yet');
+  const who=document.getElementById('profWho');
+  if(who){ const p=prof();
+    who.textContent = p ? (profileName+' — '+p.accs.length+' accessories, '+p.cos.length+' costumes, '
+      +p.beaten+' win'+(p.beaten===1?'':'s')) : 'No player chosen yet'; } }
+
+/* ---- the accessory drawer ---- */
+function openAccDrawer(){
+  const grid=document.getElementById('accGrid'); grid.innerHTML='';
+  const p=prof(), mine=myAccs();
+  if(!mine.length){
+    grid.innerHTML='<div class="tag" style="grid-column:1/-1">Nothing yet! Climb all three towers '
+      +'and you\u2019ll earn your first accessory. 🎁</div>';
+  } else {
+    const mk=(id,label,tag,on)=>{ const b=document.createElement('button');
+      b.className='accCard'+(on?' on':''); b.innerHTML=label+'<span class="tag">'+tag+'</span>';
+      b.addEventListener('click',()=>{ const q=prof(); if(!q) return;
+        q.equipAcc = (q.equipAcc===id) ? null : id; saveProfiles(); Audio_.sfx('click'); openAccDrawer(); });
+      grid.appendChild(b); };
+    mk(null,'None','take it off', !p.equipAcc);
+    mine.forEach(a=>mk(a.id, a.n, a.g, p && p.equipAcc===a.id));
+  }
+  updateCosUI();
+  document.getElementById('accDrawer').classList.remove('hidden');
+}
+function closeAccDrawer(){ document.getElementById('accDrawer').classList.add('hidden'); }
+
+/* ---- the player profile screen ---- */
+function updateProfileScreen(){
+  const inp=document.getElementById('profInput'); inp.value=profileName||'';
+  const list=document.getElementById('profList');
+  const names=Object.keys(profiles);
+  if(!names.length){ list.innerHTML='<div class="tag">No players saved yet.</div>'; return; }
+  list.innerHTML='<div class="tag" style="margin-bottom:6px">Saved players — tap to switch:</div>';
+  names.forEach(n=>{ const b=document.createElement('button');
+    b.className='btn small'; b.style.margin='4px';
+    b.textContent=(n===profileName?'▶ ':'')+n+' ('+profiles[n].beaten+')';
+    b.addEventListener('click',()=>{ useProfile(n); Audio_.sfx('click'); updateProfileScreen(); updateMenuWho(); });
+    list.appendChild(b); });
+}
+function updateMenuWho(){ const e=document.getElementById('menuWho');
+  if(e) e.textContent = profileName ? ('playing as '+profileName+' 💛') : 'tap Player to save your unlocks'; }
+const previewLook=currentLook;
 
 /* =========================================================================
    RESIZE / LOOP / INTRO
@@ -2173,6 +2640,7 @@ requestAnimationFrame(frame);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) Audio_.kick(); });
 setInterval(()=>Audio_.kick(),2000);
 
+updateMenuWho();
 (function intro(){
   const it=document.getElementById('introTitle'), ib=document.getElementById('introBy');
   setTimeout(()=>it.classList.add('fadeUp'),300);
