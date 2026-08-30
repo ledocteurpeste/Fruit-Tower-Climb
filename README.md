@@ -8,7 +8,7 @@ Climb up **Cherry → Strawberry → Blueberry**, grabbing fruit and dodging haz
 
 ---
 
-## ▶️ Play it
+[## ▶️ Play it](https://ledocteurpeste.github.io/Fruit-Tower-Climb/index.html)
 
 If on mobile, turn the phone sideways and tap **Begin Game**. In Safari you can also tap **Share → Add to Home Screen** to get a real app icon that opens fullscreen.
 
