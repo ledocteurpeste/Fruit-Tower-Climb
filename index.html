@@ -47,19 +47,29 @@
   #lives{ font-size:22px; letter-spacing:2px; }
   /* just the time: no slab behind it, so it stays out of the way of the climb.
      The keyline is what keeps it readable against sky, sea or fruit. */
-  #timer{ font-variant-numeric:tabular-nums; color:#fff; font-weight:900;
+  #hudRight{ display:flex; align-items:center; gap:10px; }
+  /* Centred on the screen rather than on the gap between the pills: the fruit
+     count and the lives are different widths, so a flexed timer sat off to one
+     side of the middle. */
+  #timer{ position:absolute; left:50%; transform:translateX(-50%);
+    font-variant-numeric:tabular-nums; color:#fff; font-weight:900;
     font-size:clamp(15px,3.2vw,19px); letter-spacing:.6px; opacity:.92;
     text-shadow:-2px 0 rgba(0,0,0,.55), 2px 0 rgba(0,0,0,.55), 0 -2px rgba(0,0,0,.55),
       0 2px rgba(0,0,0,.55), 0 2px 5px rgba(0,0,0,.5); }
-  #pauseBtn{ pointer-events:auto; background:linear-gradient(var(--slab),var(--slab2)); color:#fff;
-    border:3px solid var(--ink); width:44px; height:44px; border-radius:50%; font-size:17px;
-    box-shadow:0 3px 0 rgba(0,0,0,.35); }
-  #centerMsg{ position:absolute; top:70px; left:50%; transform:translateX(-50%);
-    color:#fff; font-weight:900; font-size:clamp(16px,3.4vw,24px); letter-spacing:.4px;
-    text-align:center; opacity:0; transition:opacity .3s;
-    background:linear-gradient(var(--slab),var(--slab2)); border:3px solid var(--ink);
-    padding:7px 18px; border-radius:14px; white-space:nowrap; box-shadow:0 4px 0 rgba(0,0,0,.3);
-    text-shadow:0 2px 0 rgba(0,0,0,.45); }
+  /* no slab, but big and solid enough to read as a control on any background */
+  #pauseBtn{ pointer-events:auto; background:none; border:none; color:#fff;
+    width:46px; height:46px; border-radius:50%; font-size:30px; line-height:1; padding:0;
+    text-shadow:-2px 0 rgba(0,0,0,.55), 2px 0 rgba(0,0,0,.55), 0 -2px rgba(0,0,0,.55),
+      0 2px rgba(0,0,0,.55), 0 2px 5px rgba(0,0,0,.5); }
+  #pauseBtn:active{ transform:scale(.9); }
+  /* Free-floating text. A panel here dropped a solid block over the tower every
+     time you passed a checkpoint, which broke the flow of the climb. */
+  #centerMsg{ position:absolute; top:68px; left:50%; transform:translateX(-50%);
+    color:#fff; font-weight:900; font-size:clamp(17px,3.6vw,26px); letter-spacing:.5px;
+    text-align:center; opacity:0; transition:opacity .3s; white-space:nowrap; padding:0 12px;
+    text-shadow:-2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink),
+      -2px -2px var(--ink), 2px -2px var(--ink), -2px 2px var(--ink), 2px 2px var(--ink),
+      0 4px 0 rgba(0,0,0,.3), 0 3px 9px rgba(0,0,0,.5); }
 
   /* ============ Touch controls ============ */
   #stickZone{ position:absolute; left:0; bottom:0; width:46%; height:72%; pointer-events:auto; }
@@ -408,11 +418,11 @@
 <div id="hud">
   <div id="topbar">
     <div class="hudpill" id="coinPill">🍒 <span id="coinCount">0</span></div>
-    <div style="display:flex;align-items:center;gap:10px">
-      <div id="timer">0:00.0</div>
+    <div id="timer">0:00.0</div>
+    <div id="hudRight">
+      <div class="hudpill" id="lives">❤❤❤</div>
       <button id="pauseBtn">⏸</button>
     </div>
-    <div class="hudpill" id="lives">❤❤❤</div>
   </div>
   <div id="centerMsg"></div>
   <div id="stickZone"><div id="stickBase"><div id="stickNub"></div></div></div>
@@ -2101,9 +2111,15 @@ function buildLevel(idx){
     solids.push(s); return s;
   }
   function coinsOn(s,n){ const top=s.y+s.h/2;
+    // A coin resting on a platform that travels has to travel with it. The
+    // elevator swings nine units, so its two coins used to hang in mid-air
+    // while the deck slid out from under them.
+    const rides = s.axis ? solids.indexOf(s) : -1;
     for(let k=0;k<n;k++){ const a=k/n*6.2832+0.4;
-      coins.push({x:s.x+Math.cos(a)*(s.r?s.r*0.45:1.0), y:top+0.78,
-        z:s.z+Math.sin(a)*(s.r?s.r*0.45:1.0), got:false, ph:Math.random()*6}); } }
+      const c={x:s.x+Math.cos(a)*(s.r?s.r*0.45:1.0), y:top+0.78,
+        z:s.z+Math.sin(a)*(s.r?s.r*0.45:1.0), got:false, ph:Math.random()*6};
+      if(rides>=0){ c.rides=rides; c.ox=c.x-s.bx; c.oy=c.y-s.by; c.oz=c.z-s.bz; }
+      coins.push(c); } }
   function coinLine(x,y,z,n,dz){ for(let k=0;k<n;k++) coins.push({x, y, z:z+k*dz, got:false, ph:Math.random()*6}); }
   function chk(s){ checks.push({x:s.x,y:s.y+s.h/2+0.4,z:s.z}); }
   // long banana bridge that cracks and drops behind you
@@ -2422,6 +2438,10 @@ function buildLevel(idx){
       {kind:'princess', dx:2.4, dz:3.4, cheer:true}]);
   }
 
+  // hand each travelling platform the coins that ride on it
+  for(const c of coins) if(c.rides>=0 && c.rides!==undefined){
+    const s=solids[c.rides]; (s.riders || (s.riders=[])).push(c); }
+
   return { theme:T, solids, spikes, fans, swings, checks, coins, goal, spawn, boat,
            npcs, keys, cages, ports, finish, arch };
 }
@@ -2510,6 +2530,7 @@ function updateDynamics(dt,t){
       if(s.axis==='x') s.x=s.bx+p; else if(s.axis==='y') s.y=s.by+p; else s.z=s.bz+p;
       s.dx=s.x-px; s.dy=s.y-py; s.dz=s.z-pz; }
     if(s.spin){ s.pAng=s.ang; s.ang+=s.spin*dt; }
+    if(s.riders) for(const c of s.riders){ c.x=s.x+c.ox; c.y=s.y+c.oy; c.z=s.z+c.oz; }
     if(s.crumb){
       if(s.timer>=0 && !s.dead){ s.timer+=dt;
         if(s.timer > (s.quick?0.20:0.42)){ s.dead=true; s.fall=0; Audio_.sfx('crack'); } }
