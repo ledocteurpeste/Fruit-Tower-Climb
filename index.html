@@ -1315,29 +1315,35 @@ function drawCage(c,t){
 }
 /* the folk you meet: a herald, a princess, a king, a queen */
 function drawPerson(p,t,T){
+  // These are grown-ups and the climbers are children, so they stand a little
+  // taller. Everything below is authored at child scale and then scaled up,
+  // which keeps the proportions honest.
+  const SC=1.34;
   const royal = p.kind==='king'||p.kind==='queen';
   const base = p.kind==='herald' ? C(0x5f7dd6) : T.coinCol;
   const gown = p.kind==='king' ? mixc(base,[0,0,0],0.30)
              : p.kind==='queen'? mixc(base,[1,1,1],0.22) : base;
   const skin=C(0xf6c9a0), a0=p.ang||0;
   // freed princesses hop for joy; greeters clap
-  const cheer = !!p.cheer, hop = cheer? Math.abs(Math.sin(t*5.5))*0.55 : 0;
+  const cheer = !!p.cheer, hop = cheer? Math.abs(Math.sin(t*5.5))*0.62 : 0;
   const y=p.y+hop;
-  const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(p.x+lx*Math.cos(a0)+lz*Math.sin(a0), y+ly,
-      p.z-lx*Math.sin(a0)+lz*Math.cos(a0), sx,sy,sz, c, a0, rz);
-  cyl(p.x, y+0.46, p.z, 0.42, 0.92, gown);                 // skirt / robe
-  cyl(p.x, y+0.62, p.z, 0.47, 0.14, mixc(gown,[1,1,1],0.22));
-  cyl(p.x, y+1.06, p.z, 0.30, 0.36, gown);                 // bodice
+  const wx=(lx,lz)=>p.x+(lx*Math.cos(a0)+lz*Math.sin(a0))*SC;
+  const wz=(lx,lz)=>p.z+(-lx*Math.sin(a0)+lz*Math.cos(a0))*SC;
+  const B=(lx,ly,lz,sx,sy,sz,c,rz)=>box(wx(lx,lz), y+ly*SC, wz(lx,lz), sx*SC,sy*SC,sz*SC, c, a0, rz);
+  const Y=(lx,ly,lz,r,h,c)=>cyl(wx(lx,lz), y+ly*SC, wz(lx,lz), r*SC, h*SC, c);
+  const K=(lx,ly,lz,r,h,c)=>cone(wx(lx,lz), y+ly*SC, wz(lx,lz), r*SC, h*SC, c);
+  Y(0,0.46,0, 0.42,0.92, gown);                            // skirt / robe
+  Y(0,0.62,0, 0.47,0.14, mixc(gown,[1,1,1],0.22));
+  Y(0,1.06,0, 0.30,0.36, gown);                            // bodice
   B(0,1.32,0, 0.30,0.18,0.26, skin);                       // neck
   B(0,1.62,0, 0.46,0.44,0.42, skin);                       // head
   B(0,1.85,0, 0.50,0.14,0.46, p.kind==='king'? C(0x8a6a4a) : C(0x6b3f1d));
   if(!royal && p.kind!=='herald') B(0,1.56,-0.27, 0.42,0.58,0.10, C(0x6b3f1d)); // long hair
   // crown for the royals, a slim tiara otherwise
   const cw = royal? 0.30 : 0.20;
-  cyl(p.x, y+1.94, p.z, cw, royal?0.15:0.08, C(0xffd34d));
-  for(let k=0;k<5;k++){ const a=a0+k/5*6.2832;
-    cone(p.x+Math.cos(a)*cw*0.82, y+2.06, p.z+Math.sin(a)*cw*0.82,
-         0.055, royal?0.22:0.13, C(0xffd34d)); }
+  Y(0,1.94,0, cw, royal?0.15:0.08, C(0xffd34d));
+  for(let i2=0;i2<5;i2++){ const a=i2/5*6.2832;
+    K(Math.cos(a)*cw*0.82, 2.06, Math.sin(a)*cw*0.82, 0.055, royal?0.22:0.13, C(0xffd34d)); }
   // arms
   if(cheer){                                               // both arms up
     B(-0.38,1.28, 0.02, 0.16,0.56,0.16, skin, 0.28);
