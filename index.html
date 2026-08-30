@@ -554,7 +554,7 @@ function drawGlove(B,S, lx,ly,lz, col, flip){
   S(lx,ly+0.13,lz, 0.155, col, 0.10);                               // cuff
 }
 
-function drawChar(ch, x,y,z, face, walk, airborne, t){
+function drawChar(ch, x,y,z, face, walk, airborne, t, climbing){
   const cs=Math.cos(face), sn=Math.sin(face);
   // The soles are modelled at local y=-1.32 but the collision floor is -hh (-0.9),
   // so lift every part by this much or the character sinks into the platform.
@@ -593,10 +593,19 @@ function drawChar(ch, x,y,z, face, walk, airborne, t){
   /* arms + gloved hands */
   const armSw=-sw;
   const sleeve = ch.fluffy? mixc(ch.shirt,[1,1,1],0.15) : (ch.jacket||ch.skin);
-  B(-0.52,-0.12+bob, armSw*0.5, 0.22,0.62,0.22, sleeve);
-  B( 0.52,-0.12+bob,-armSw*0.5, 0.22,0.62,0.22, sleeve);
-  drawGlove(B,S, -0.53,-0.50+bob, armSw*0.5, glove, -1);
-  drawGlove(B,S,  0.53,-0.50+bob,-armSw*0.5, glove,  1);
+  if(climbing){
+    // both arms up on the wall, one reaching higher than the other, alternating
+    const reach=Math.sin(walk)*0.22;
+    B(-0.46, 0.34+reach, 0.30, 0.22,0.62,0.22, sleeve);
+    B( 0.46, 0.34-reach, 0.30, 0.22,0.62,0.22, sleeve);
+    drawGlove(B,S, -0.47, 0.70+reach, 0.34, glove, -1);
+    drawGlove(B,S,  0.47, 0.70-reach, 0.34, glove,  1);
+  } else {
+    B(-0.52,-0.12+bob, armSw*0.5, 0.22,0.62,0.22, sleeve);
+    B( 0.52,-0.12+bob,-armSw*0.5, 0.22,0.62,0.22, sleeve);
+    drawGlove(B,S, -0.53,-0.50+bob, armSw*0.5, glove, -1);
+    drawGlove(B,S,  0.53,-0.50+bob,-armSw*0.5, glove,  1);
+  }
 
   /* neck + head */
   B(0,0.40+bob,0, 0.28,0.20,0.26, ch.skin);
@@ -1073,23 +1082,22 @@ function buildLevel(idx){
       c:C(0xffe1b0),bx:cx,by:cy,bz:cz}, extra||{});
     solids.push(s); return s;
   }
-  // a switchback stack of small ledges bolted to a cliff face: jump from one
-  // to the next, zigzagging left-right up, with a decorative wall panel
-  // standing behind them (turnHop keeps each zigzag step a fair jump)
-  function wallClimb(dx,steps,rise,ledgeR){
-    const x0=cx, z0=cz, y0=cy;
-    let out, minX=cx, maxX=cx;
-    for(let k=0;k<steps;k++){
-      const lateral = (k%2===0? dx : -dx);
-      out=turnHop(lateral, 1.7, rise, ledgeR);
-      minX=Math.min(minX,out.x); maxX=Math.max(maxX,out.x);
-      coinsOn(out,1);
-    }
-    // the cliff face sits just behind the ledges, along the line of travel
-    const wz=(z0+out.z)/2 - 1.4;
-    solids.push({type:'box',wall:true,x:(minX+maxX)/2,y:(y0+out.y)/2,z:wz,
-      w:(maxX-minX)+3.6,h:(out.y-y0)+3.0,d:1.0,bx:(minX+maxX)/2,by:(y0+out.y)/2,bz:wz});
-    return out;
+  // A chocolate-bar wall standing straight across the route. You hop at its
+  // face and hold forward: the character hauls themselves up hand over hand and
+  // steps off on top, which becomes the new route height. The face runs a long
+  // way BELOW the approach so a short hop still catches it instead of falling.
+  function climbWall(gap,rise,width){
+    const halfD=1.2;
+    cz += lastR + halfD + gap;
+    const top = cy + rise, bot = cy - 6.0;
+    const s={type:'box',wall:true,climb:true,x:cx,y:(top+bot)/2,z:cz,
+      w:width,h:top-bot,d:halfD*2,bx:cx,by:(top+bot)/2,bz:cz};
+    solids.push(s);
+    // a coin trail up the face, so it reads as "go up here"
+    for(let k=0;k<3;k++)
+      coins.push({x:cx, y:cy+0.9+k*(rise-0.6)/3, z:cz-halfD-0.9, got:false, ph:k*2});
+    cy = top; lastR = halfD;
+    return s;
   }
 
   if(idx===0){
@@ -1113,8 +1121,8 @@ function buildLevel(idx){
     // ---- turn right again, off the plaza ----
     s=turnHop(6.5, 3.0, 1.3, 2.6); coinsOn(s,2);
 
-    // ---- climb a wall of ledges, zigzagging up its face ----
-    s=wallClimb(2.6, 4, 1.9, 1.4);
+    // ---- a chocolate-bar wall you climb by holding forward ----
+    s=climbWall(2.2, 5.5, 9.0);
 
     s=hop(-1.6, 2.6, 1.3, 3.0); s.fruit='gumdrop'; coinsOn(s,2);
     // ---- elevator: a slow, tall up/down platform ----
@@ -1201,13 +1209,15 @@ function buildLevel(idx){
 let state='intro';
 let world=null, levelIdx=0;
 const player={ x:0,y:2,z:0, vx:0,vy:0,vz:0, r:0.42, hh:0.9, onGround:false, facing:0, walk:0,
-  standingOn:null, respawn:{x:0,y:2,z:0}, dead:false, deadT:0, swing:null, swingCd:0 };
+  standingOn:null, respawn:{x:0,y:2,z:0}, dead:false, deadT:0, swing:null, swingCd:0,
+  climbing:false, climbHint:false };
 let lives=3, coinsLevel=0, coinsForLife=0, runTime=0, running=false;
-const GRAV=-26, JUMP=11, MOVE=7, TRAMP=21, AIR=0.72;
+const GRAV=-26, JUMP=11, MOVE=7, TRAMP=21, AIR=0.72, CLIMB=6;
 const cam={ yaw:Math.PI, pitch:0.42, dist:10 };
 
 function resetPlayerTo(p){ player.x=p.x; player.y=p.y; player.z=p.z; player.vx=player.vy=player.vz=0;
-  player.onGround=false; player.dead=false; player.swing=null; player.standingOn=null; player.swingCd=0; }
+  player.onGround=false; player.dead=false; player.swing=null; player.standingOn=null; player.swingCd=0;
+  player.climbing=false; }
 
 function resetHazards(){
   // banana segments grow back, so a fall never makes the level impossible
@@ -1220,7 +1230,7 @@ function startLevel(idx){
   Audio_.setTheme(idx);
   player.respawn={x:world.spawn.x,y:world.spawn.y,z:world.spawn.z};
   resetPlayerTo(world.spawn);
-  coinsLevel=0; running=true;
+  coinsLevel=0; running=true; player.climbHint=false;   // re-teach the climb each tower
   const T=world.theme; gl.clearColor(T.sky[0],T.sky[1],T.sky[2],1); gl.uniform3fv(loc.uFog,T.fog);
   document.getElementById('coinPill').firstChild.textContent = T.coin+' ';
   updateHUD();
@@ -1304,21 +1314,47 @@ function physics(dt,t,inx,inz){
   player.vy += GRAV*dt; if(player.vy<-42) player.vy=-42;
   player.onGround=false; player.standingOn=null;
 
-  // X / Z walls (boxes)
+  // X / Z walls (boxes) — a climbable one also records the grip for the climb below
+  let grip=null, gripAx='';
   player.x+=player.vx*dt;
   for(const s of world.solids){ if(s.type!=='box'||s.dead) continue;
     if(aabbH(player.x,player.y,player.z,s)){
-      if(player.vx>0) player.x=s.x-s.w/2-player.r; else if(player.vx<0) player.x=s.x+s.w/2+player.r; player.vx=0; } }
+      if(player.vx>0) player.x=s.x-s.w/2-player.r; else if(player.vx<0) player.x=s.x+s.w/2+player.r; player.vx=0;
+      if(s.climb){ grip=s; gripAx='x'; } } }
   player.z+=player.vz*dt;
   for(const s of world.solids){ if(s.type!=='box'||s.dead) continue;
     if(aabbH(player.x,player.y,player.z,s)){
-      if(player.vz>0) player.z=s.z-s.d/2-player.r; else if(player.vz<0) player.z=s.z+s.d/2+player.r; player.vz=0; } }
+      if(player.vz>0) player.z=s.z-s.d/2-player.r; else if(player.vz<0) player.z=s.z+s.d/2+player.r; player.vz=0;
+      if(s.climb){ grip=s; gripAx='z'; } } }
   // round platforms: push out radially when we're beside (not on top of) them
   for(const s of world.solids){ if(s.type!=='disc'||s.dead) continue;
     const dx=player.x-s.x, dz=player.z-s.z, dd=Math.hypot(dx,dz)||1, minD=s.r+player.r;
     if(dd<minD && (player.y+player.hh)>(s.y-s.h/2)+0.06 && (player.y-player.hh)<(s.y+s.h/2)-0.06){
       player.x=s.x+dx/dd*minD; player.z=s.z+dz/dd*minD;
       player.vx*=0.2; player.vz*=0.2; } }
+
+  // ---- wall climbing: keep holding the stick into the face and you haul up it ----
+  player.climbing=false;
+  if(grip){
+    // which way is "into the wall" depends on the face we're pressed against
+    const side = gripAx==='x' ? Math.sign(player.x-grip.x) : Math.sign(player.z-grip.z);
+    const into = gripAx==='x' ? -side*inx : -side*inz;
+    const top = grip.y+grip.h/2;
+    if(!player.climbHint){ player.climbHint=true; showMsg('Hold forward to climb! 🧗',1800); }
+    if(into>0.3 && (player.y-player.hh) < top){
+      player.climbing=true;
+      player.vy=CLIMB;                       // steady haul; gravity ignored while gripping
+      player.walk+=CLIMB*dt*1.7;             // hand over hand
+      // face the wall, so the reaching arms land against it
+      player.facing = gripAx==='x' ? Math.atan2(-side,0) : Math.atan2(0,-side);
+      // hauled over the lip — step in onto the top of the wall
+      if((player.y-player.hh)+player.vy*dt > top-0.10){
+        if(gripAx==='x') player.x = grip.x + side*(grip.w/2-0.7);
+        else             player.z = grip.z + side*(grip.d/2-0.7);
+        player.y = top+player.hh-0.05; player.vy=0; player.climbing=false;
+      }
+    }
+  }
 
   // Y — land / bonk
   player.y+=player.vy*dt;
@@ -1512,7 +1548,7 @@ function render(t){
   /* ---- player ---- */
   if(!(player.dead && (player.deadKind==='water' || Math.floor(player.deadT*10)%2===0)))
     drawChar(CHARACTERS[chosen], player.x, player.y, player.z, player.facing, player.walk,
-             !player.onGround || !!player.swing, t);
+             !player.onGround || !!player.swing, t, player.climbing);
 }
 
 function drawTrampoline(s,t){
