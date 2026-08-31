@@ -137,10 +137,10 @@
 
   /* the wordmark. It is sized by height so it never crowds a short landscape
      screen, and drops a soft shadow so it lifts off the blue. */
-  .gamelogo{ display:block; width:min(660px,86vw); height:auto;
-    max-height:min(27vh,178px); margin:0 auto;
+  .gamelogo{ display:block; width:min(760px,94vw); height:auto;
+    max-height:min(34vh,232px); margin:0 auto 14px;
     filter:drop-shadow(0 7px 0 rgba(0,0,0,.22)) drop-shadow(0 10px 16px rgba(0,0,0,.32)); }
-  #introTitle .gamelogo{ max-height:min(38vh,240px); width:min(720px,90vw); }
+  #introTitle .gamelogo{ max-height:min(40vh,260px); width:min(760px,92vw); margin-bottom:0; }
   h1.logo{ font-size:clamp(38px,9.4vw,80px); font-weight:900; line-height:1; text-transform:uppercase;
     background:linear-gradient(#fff6b0,#ffd451 46%,#ff9c2e);
     -webkit-background-clip:text; background-clip:text; color:transparent;
@@ -268,6 +268,9 @@
   /* every row in the menu column is the same width, so the edges line up */
   #mainMenu .btn{ width:var(--menuw); min-width:0; }
   #menuProf{ display:flex; align-items:center; gap:9px; margin:4px 0 14px; width:var(--menuw); }
+  /* the menu has no bar at the top, so it should not reserve room for one:
+     the asymmetric padding was pushing the whole column below centre */
+  #mainMenu .sbody{ padding-top:22px; }
   #mainMenu{ --menuw:min(330px,78vw); }
   #menuProfPick{ pointer-events:auto; cursor:pointer; -webkit-appearance:none; appearance:none;
     font:inherit; font-weight:900; font-size:clamp(15px,3.4vw,19px); text-transform:uppercase;
@@ -288,14 +291,20 @@
     box-shadow:0 4px 0 var(--blueE), inset 0 2px 0 rgba(255,255,255,.4); padding:0; }
   .cogBtn:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--blueE), inset 0 2px 0 rgba(255,255,255,.4); }
 
-  /* ===== Character select: three bands so nothing sits over the model ===== */
-  #charScreen .sbody{ padding:0; justify-content:space-between; }
-  #charTop{ width:100%; padding:66px 16px 6px; }
-  #charTop .kicker{ font-size:clamp(12px,3vw,17px); font-weight:900; text-transform:uppercase;
-    letter-spacing:1px; opacity:.9; text-shadow:0 2px 0 rgba(0,0,0,.45); }
-  #charName{ font-size:clamp(22px,5.6vw,38px); font-weight:900; text-transform:uppercase;
+  /* ===== Character select: the bar holds the name, everything below is model ===== */
+  #charScreen .sbody{ padding:62px 0 0; justify-content:space-between; }
+  /* the name is two lines, so this bar sizes to its content instead of being
+     pinned to the standard 64px — otherwise the kicker clips off the top */
+  #charScreen .topbar2{ height:auto; min-height:64px; align-items:flex-start; }
+  #charTop{ align-self:flex-start; padding:5px 8px 4px; line-height:1.05; }
+  #charTop .kicker{ font-size:clamp(11px,2.6vw,15px); font-weight:900; text-transform:uppercase;
+    letter-spacing:1px; opacity:.85; text-shadow:0 2px 0 rgba(0,0,0,.45); }
+  #charName{ font-size:clamp(21px,5vw,34px); font-weight:900; text-transform:uppercase;
     letter-spacing:1px; line-height:1.1; }
-  #charMid{ flex:1; width:100%; display:flex; align-items:center; justify-content:space-between; padding:0 14px; }
+  /* the arrows come in off the edges: at the very sides they are hard to see and
+     awkward to reach on a phone */
+  #charMid{ flex:1; width:100%; display:flex; align-items:center; justify-content:space-between;
+    padding:0 clamp(26px,9vw,120px); }
   #charBot{ width:100%; padding:6px 16px 14px; background:linear-gradient(rgba(4,22,44,0), rgba(4,22,44,.8)); }
   .arrow{ pointer-events:auto; cursor:pointer; width:60px; height:60px; border-radius:50%;
     border:3px solid var(--ink); font-size:25px; color:#fff;
@@ -309,8 +318,6 @@
      beside it so the two can never overlap. */
   #rightCol{ display:flex; align-items:center; gap:12px; pointer-events:auto; }
   #cosCol{ display:flex; flex-direction:column; gap:10px; align-items:center; pointer-events:auto; }
-  #cosName{ font-size:clamp(11px,2.8vw,15px); font-weight:900; text-transform:uppercase;
-    letter-spacing:.6px; opacity:.92; margin-bottom:6px; text-shadow:0 2px 0 rgba(0,0,0,.45); }
   #charRow{ display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; }
   #accDrawer{ position:fixed; inset:0; z-index:70; display:flex; flex-direction:column; color:#fff;
     text-align:center;
@@ -378,27 +385,26 @@
   /* a middling screen still has to fit: trim the mark and the gaps before the
      credit line runs off the bottom */
   @media (max-height: 790px){
-    .gamelogo{ max-height:min(23vh,150px); }
-    .tag{ margin:10px 0 14px; }
+    .gamelogo{ max-height:min(25vh,172px); }
+    .tag{ margin:8px 0 12px; }
     .btn{ padding:11px 24px; margin:5px; }
     #menuProf{ margin:2px 0 10px; }
   }
   /* a very short landscape screen: the buttons matter more than the blurb */
-  @media (max-height: 430px){
-    .gamelogo{ max-height:80px; width:min(420px,66vw); }
-    #mainMenu .tag{ display:none; }
-  }
   @media (max-height: 620px){
     h1.logo{ font-size:clamp(25px,7vw,44px); }
     .logo .sub{ font-size:.3em; letter-spacing:5px; margin-top:2px; }
     .tag{ font-size:13px; margin:13px 0 10px; line-height:1.35; }
+    /* the blurb reads once and then never again; the mark has to keep its size */
+    #mainMenu .tag{ display:none; }
+    .gamelogo{ max-height:min(30vh,168px); margin-bottom:10px; }
     .btn{ padding:9px 24px; font-size:15px; margin:4px; min-width:210px; }
     .btn.ghost{ min-width:180px; }
     .btn.small{ padding:8px 16px; font-size:14px; }
     .topbar2{ height:52px; } .tbSlab{ height:46px; min-width:100px; }
     .tbTitle{ font-size:clamp(16px,3.8vw,24px); }
     .sbody{ padding:58px 16px 14px; }
-    #charTop{ padding:50px 16px 2px; }
+    #charScreen .sbody{ padding-top:52px; }
     #accBody{ padding:52px 12px 10px; }
     #mainMenu .credit{ display:none; }
     #menuProf{ margin:2px 0 8px; }
@@ -409,6 +415,18 @@
     .arrow{ width:50px; height:50px; font-size:22px; }
     .profAva{ width:44px; height:44px; font-size:24px; }
     .stat .bar{ height:34px; }
+  }
+  @media (max-height: 470px){
+    .gamelogo{ max-height:min(26vh,120px); margin-bottom:6px; }
+    .btn{ padding:8px 22px; font-size:14px; margin:3px; }
+    #menuProf{ margin:0 0 6px; }
+    #menuProfPick{ padding:7px 22px; } .cogBtn{ width:40px; height:40px; font-size:17px; }
+  }
+  @media (max-height: 400px){
+    .gamelogo{ max-height:min(21vh,80px); margin-bottom:3px; }
+    /* never squeeze a button below a usable tap target, however short the screen */
+    .btn{ padding:8px 20px; font-size:13px; margin:2px 2px 1px; }
+    .arrow{ width:44px; height:44px; font-size:19px; }
   }
 </style>
 </head>
@@ -434,7 +452,7 @@
 
 <div id="intro">
   <div id="introTitle">
-  <svg class="gamelogo" viewBox="0 0 840 250" role="img" aria-label="Fruit Tower Climb">
+  <svg class="gamelogo" viewBox="0 34 840 210" role="img" aria-label="Fruit Tower Climb">
     <defs>
       <linearGradient id="lgGold-i" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#fff09a"/><stop offset=".38" stop-color="#ffcb32"/>
@@ -499,7 +517,7 @@
 
 <div class="screen hidden" id="mainMenu">
   <div class="sbody">
-    <svg class="gamelogo" viewBox="0 0 840 250" role="img" aria-label="Fruit Tower Climb">
+    <svg class="gamelogo" viewBox="0 34 840 210" role="img" aria-label="Fruit Tower Climb">
       <defs>
         <linearGradient id="lgGold" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stop-color="#fff09a"/><stop offset=".38" stop-color="#ffcb32"/>
@@ -606,14 +624,15 @@
 <div class="screen hidden" id="charScreen">
   <div class="topbar2">
     <button class="tbSlab left" id="charBack" data-back><span class="chev"></span></button>
-    <div class="tbTitle outline">Climbers</div>
+    <!-- the climber's name IS the title here, so the bar carries it and the
+         whole screen below is left to the model -->
+    <div class="tbTitle outline" id="charTop">
+      <div class="kicker">Choose your climber!</div>
+      <div id="charName">—</div>
+    </div>
     <button class="tbSlab right" data-home></button>
   </div>
   <div class="sbody">
-    <div id="charTop">
-      <div class="kicker">Choose your climber!</div>
-      <div id="charName" class="outline">—</div>
-    </div>
     <div id="charMid">
       <button class="arrow" id="charPrev">◀</button>
       <div id="rightCol">
@@ -625,7 +644,6 @@
       </div>
     </div>
     <div id="charBot">
-      <div id="cosName">Costume: Original</div>
       <div class="dots" id="charDots"></div>
       <div id="charRow">
         <button class="btn small" id="accBtn">👒 Accessories</button>
@@ -2946,15 +2964,16 @@ function renderCharSelect(t){
   // Sit close enough that the climber fills the band, pulling back only when the
   // band is narrow enough that the pedestal would otherwise run off the sides.
   const asp=canvas.width/vh;
-  const dist=Math.max(5.0, 5.6/Math.max(0.5, asp));
-  // framed a little low so the pedestal's base is inside the band too
-  gl.uniformMatrix4fv(loc.uView,false,M.lookAt([0,0.45,dist],[0,-0.5,0],[0,1,0]));
+  const dist=Math.max(3.7, 4.4/Math.max(0.5, asp));
+  // Barely tilted and framed low: looking down on the pedestal throws its front
+  // rim a long way down the screen, and it was being cut off at the band edge.
+  gl.uniformMatrix4fv(loc.uView,false,M.lookAt([0,0.42,dist],[0,-0.5,0],[0,1,0]));
   csAng+=0.012;
-  // a fruit-slice pedestal
-  cyl(0,-1.95,0, 2.2, 0.55, C(0x2b6f8f));
-  cyl(0,-1.70,0, 2.0, 0.14, C(0x3f9ac0));
+  // a fruit-slice pedestal, kept small so the climber is what fills the frame
+  cyl(0,-1.92,0, 1.62, 0.44, C(0x2b6f8f));
+  cyl(0,-1.72,0, 1.46, 0.12, C(0x3f9ac0));
   for(let i=0;i<10;i++){ const a=i/10*6.2832+csAng*0.4;
-    sph(Math.cos(a)*2.0,-1.68,Math.sin(a)*2.0, 0.20, C(0x66c6e8)); }
+    sph(Math.cos(a)*1.48,-1.70,Math.sin(a)*1.48, 0.15, C(0x66c6e8)); }
   drawChar(CHARACTERS[chosen], 0,-0.28,0, csAng*1.6, t*3.0, false, t, false, false, previewLook());
   gl.viewport(0,0,canvas.width,canvas.height);          // hand the full canvas back
 }
@@ -3097,10 +3116,9 @@ function stepCostume(dir){ const p=prof(); if(!p) return;
   const l=cosList(); if(l.length<2){ showMsg('Beat the game to earn costumes! 🎁',1600); return; }
   const n=(cosIndex()+dir+l.length)%l.length;
   p.equipCos[chosen]= l[n] ? l[n].id : null; saveProfiles(); updateCosUI(); Audio_.sfx('click'); }
-function updateCosUI(){ const l=cosList(), c=l[cosIndex()];
-  const owned=l.length-1;
-  document.getElementById('cosName').textContent =
-    'Costume: '+(c? c.n : 'Original')+(owned? '  ('+(cosIndex()+1)+'/'+l.length+')' : '  — none earned yet');
+// The costume line under the model is gone — the model itself is the feedback,
+// and the label was eating room the climber could use.
+function updateCosUI(){
   const who=document.getElementById('profWho');
   if(who){ const p=prof();
     who.textContent = p ? (profileName+' — '+p.accs.length+' accessories, '+p.cos.length+' costumes, '
