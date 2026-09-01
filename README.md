@@ -4,7 +4,7 @@
 
 Climb up **Cherry → Strawberry → Blueberry**, grabbing fruit and dodging hazards. Reach the flag at the top of each tower to move on, save princess Blueberry and race the clock for your best time. It's built for a young player: fun, forgiving, and includes frequent checkpoints, fall off and you pop right back to your last checkpoint.
 
-> 🎮 **One file, no install, no internet.** The whole game is a single `index.html`, open it in any modern browser and play. Best on a phone held **sideways (landscape)**.
+> 🎮 **No install, no build step.** Runs on [Three.js](https://threejs.org/) (v0.160.0), pulled straight from the jsDelivr CDN via an import map, no bundler and no `npm install`. Best on a phone held **sideways (landscape)**.
 
 ---
 
@@ -48,11 +48,28 @@ Clear all three to win — your total time is saved to the leaderboard.
 
 ## 🛠️ For grown-ups (tweaking it)
 
-Everything lives in `index.html` — no build step, no dependencies.
+`index.html` is a thin shell (markup, CSS, and an import map); the engine lives in ES modules under `src/`, with 3D assets under `assets/`.
 
-- **Make a tower easier/harder:** each tower is built in `buildLevel()`; the `steps` list places platforms as `[sideways, forward, height, size]` — smaller gaps and bigger `size` = easier.
-- **Jump feel:** the `JUMP`, `GRAV`, `MOVE`, `TRAMP` constants near the top of the game logic.
-- **Characters:** the `CHARACTERS` array (colors + features).
-- **Music:** the `Audio_` object (each tower shifts musical key via `Audio_.setTheme`).
+```
+index.html      – shell: markup, CSS, import map, loads src/main.js
+src/            – the engine, as ES modules (main, scene, character, camera,
+                  controls, physics, levels, audio, hud, registry, …)
+assets/         – glTF character + prop models
+test/           – Node unit tests
+```
 
-Built on a tiny custom WebGL engine (boxes, cylinders and cones) plus the Web Audio API, so it stays fast even on older phones.
+**Run it locally.** ES modules and import maps need HTTP (opening the file directly won't work):
+
+```bash
+python3 -m http.server 8000
+# then open http://localhost:8000/
+```
+
+**Tests:** `npm test` — runs Node's built-in test runner, zero dependencies.
+
+- **Make a tower easier/harder:** each tower is built from the level data in `src/levels.js`.
+- **Jump feel:** the physics constants (`JUMP`, `GRAV`, `MOVE`, `TRAMP`) in `src/physics.js`.
+- **Characters:** the `CHARACTERS` array in `src/registry.js`.
+- **Music:** the audio module in `src/audio.js` (each tower shifts musical key via `setTheme`).
+
+Rendering is Three.js (a retained scene graph, one renderer, `MeshStandardMaterial` + lights) over the Web Audio API.
