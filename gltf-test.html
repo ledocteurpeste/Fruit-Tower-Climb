@@ -13,10 +13,41 @@
     white-space:pre;pointer-events:none;
   }
   #hud b{color:#8fd0ff}
+
+  /* ---- touch controls ---- */
+  #touch{position:fixed;inset:0;z-index:9;pointer-events:none;touch-action:none}
+  #touch .zone{position:absolute;bottom:0;width:45%;height:45%;pointer-events:auto}
+  #touch .zone.left{left:0}
+  #touch .zone.right{right:0}
+  #stick{
+    position:absolute;width:120px;height:120px;border-radius:50%;
+    border:2px solid rgba(143,208,255,.5);background:rgba(15,20,32,.35);
+    left:32px;bottom:32px;pointer-events:none;opacity:.5;transition:opacity .15s;
+  }
+  #stick.active{opacity:1}
+  #stick .nub{
+    position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;
+    border-radius:50%;background:rgba(143,208,255,.85);
+  }
+  #jump{
+    position:absolute;right:32px;bottom:44px;width:96px;height:96px;border-radius:50%;
+    border:2px solid rgba(143,208,255,.5);background:rgba(143,208,255,.18);
+    color:#dfe7f5;font:600 15px/96px system-ui,sans-serif;text-align:center;
+    pointer-events:auto;user-select:none;
+  }
+  #jump.active{background:rgba(143,208,255,.4)}
+  @media (hover:hover) and (pointer:fine){ #touch{opacity:.35} }
 </style>
 </head>
 <body>
 <div id="hud">loading…</div>
+
+<div id="touch">
+  <div class="zone left" id="stickZone"></div>
+  <div class="zone right"></div>
+  <div id="stick"><div class="nub" id="nub"></div></div>
+  <button id="jump">JUMP</button>
+</div>
 
 <script type="importmap">
 {
@@ -148,6 +179,53 @@ const keys = new Set();
 addEventListener('keydown', (e) => keys.add(e.code));
 addEventListener('keyup', (e) => keys.delete(e.code));
 
+/* on-screen thumbstick + jump button (touch and mouse) */
+const touch = { x: 0, z: 0, jump: false };
+const stickEl = document.getElementById('stick');
+const nubEl = document.getElementById('nub');
+const zoneEl = document.getElementById('stickZone');
+const jumpEl = document.getElementById('jump');
+const STICK_R = 46;
+let stickId = null, stickOx = 0, stickOy = 0;
+
+function placeStick(cx, cy) {
+  stickEl.style.left = (cx - 60) + 'px';
+  stickEl.style.bottom = (innerHeight - cy - 60) + 'px';
+}
+zoneEl.addEventListener('pointerdown', (e) => {
+  stickId = e.pointerId;
+  zoneEl.setPointerCapture(e.pointerId);
+  stickOx = e.clientX; stickOy = e.clientY;
+  placeStick(stickOx, stickOy);
+  stickEl.classList.add('active');
+});
+zoneEl.addEventListener('pointermove', (e) => {
+  if (e.pointerId !== stickId) return;
+  let dx = e.clientX - stickOx, dy = e.clientY - stickOy;
+  const len = Math.hypot(dx, dy) || 1;
+  const cl = Math.min(len, STICK_R);
+  dx = dx / len * cl; dy = dy / len * cl;
+  nubEl.style.transform = `translate(${dx}px,${dy}px)`;
+  touch.x = dx / STICK_R;
+  touch.z = dy / STICK_R; // screen-down = forward (matches W = -z below via sign flip)
+});
+function endStick(e) {
+  if (e.pointerId !== stickId) return;
+  stickId = null; touch.x = touch.z = 0;
+  nubEl.style.transform = '';
+  stickEl.classList.remove('active');
+}
+zoneEl.addEventListener('pointerup', endStick);
+zoneEl.addEventListener('pointercancel', endStick);
+
+jumpEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault(); touch.jump = true; jumpEl.classList.add('active');
+});
+function endJump(e) { touch.jump = false; jumpEl.classList.remove('active'); }
+jumpEl.addEventListener('pointerup', endJump);
+jumpEl.addEventListener('pointercancel', endJump);
+jumpEl.addEventListener('contextmenu', (e) => e.preventDefault());
+
 const player = {
   x: 0, y: 0, z: 0,
   vx: 0, vy: 0, vz: 0,
@@ -161,19 +239,26 @@ const GRAV = -22;
 const JUMP = 9;
 
 function stepController(dt) {
-  let ix = 0, iz = 0;
-  if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1;
-  if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
-  if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1;
-  if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
-  const len = Math.hypot(ix, iz) || 1;
-  ix /= len; iz /= len;
-  const moving = (ix || iz) ? 1 : 0;
+  let kx = 0, kz = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) kz -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) kz += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) kx -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) kx += 1;
+  const klen = Math.hypot(kx, kz);
+  if (klen > 1) { kx /= klen; kz /= klen; }
 
-  player.vx = ix * SPEED;
-  player.vz = iz * SPEED;
+  // keyboard vs analog stick — take whichever is pushed harder
+  let ix = kx, iz = kz;
+  if (Math.hypot(touch.x, touch.z) > klen) { ix = touch.x; iz = touch.z; }
 
-  if (player.onGround && keys.has('Space')) { player.vy = JUMP; player.onGround = false; }
+  const mag = Math.min(1, Math.hypot(ix, iz));
+  const moving = mag > 0.08 ? 1 : 0;
+  const dir = moving ? Math.atan2(ix, iz) : 0;
+
+  player.vx = moving ? Math.sin(dir) * SPEED * mag : 0;
+  player.vz = moving ? Math.cos(dir) * SPEED * mag : 0;
+
+  if (player.onGround && (keys.has('Space') || touch.jump)) { player.vy = JUMP; player.onGround = false; }
   player.vy += GRAV * dt;
 
   player.x += player.vx * dt;
