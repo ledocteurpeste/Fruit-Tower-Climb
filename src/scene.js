@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { VFOV_RAD } from './camera.js';
 import { typeOf } from './registry.js';
 import { swingHandle } from './physics.js';
+import { world } from './state.js';
 
 export const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
@@ -477,5 +478,90 @@ export function buildSceneForLevel(world) {
   }
 }
 
-export function syncDynamics(t) {}   // Task 13
+export function syncDynamics(t) {
+  if (!world) return;
+
+  // ---- solids (moving platforms, trampolines, crumble segments, spinners) ----
+  for (const s of world.solids || []) {
+    if (!s._obj || s._static) continue;
+
+    // a crumble/banana segment that has fallen out of the world: hide it
+    if ((s.crumb || s.banana) && s.dead && s.y < -14) { s._obj.visible = false; continue; }
+    s._obj.visible = true;
+
+    s._obj.position.set(s.x, s.y, s.z);
+    if (s.spin != null) s._obj.rotation.y = s.ang;
+
+    // trampoline: squash the pad and tick the squash timer (nothing else does).
+    // syncDynamics only receives `t`, so the timer is advanced by a fixed 1/60s
+    // step rather than the real frame dt — close enough for the ~0.3s squash.
+    if (s.tramp) {
+      const pad = s._obj.userData && s._obj.userData.pad;
+      if (pad) {
+        const sq = s.squash > 0 ? Math.max(0.35, 1 - s.squash * 4) : 1;
+        pad.scale.y = sq;
+      }
+      if (s.squash !== undefined && s.squash > 0) {
+        s.squash += (1 / 60);
+        if (s.squash > 0.3) s.squash = 0;
+      }
+    }
+
+    // crumble / banana fall: updateDynamics already lowers s.y, position.set above
+    // carries it; a small forward tilt sells the collapse.
+    if ((s.crumb || s.banana) && s.dead) {
+      s._obj.position.y = s.y;
+      s._obj.rotation.z = Math.min(0.6, (s.fall || 0) * 1.5);
+    }
+
+    // belt: no visual scroll here — physics already carries the player along the
+    // treadmill (player.z += so.belt*dt). A texture-offset animation would need a
+    // mapped material the placeholder doesn't build.
+
+    // a solid flagged as a fan (rare) still gets its blade spun
+    if (s.fan && s._obj.userData && s._obj.userData.blade) {
+      s._obj.userData.blade.rotation.z = t * (s.dir > 0 ? 9 : -9);
+    }
+  }
+
+  // ---- coins: bob + spin, vanish when collected ----
+  for (const c of world.coins || []) {
+    if (!c._obj) continue;
+    if (c.got) { c._obj.visible = false; continue; }
+    c._obj.visible = true;
+    // c.x/y/z are already updated by updateDynamics when the coin rides a mover
+    c._obj.position.set(c.x, c.y + Math.sin(t * 3 + (c.ph || 0)) * 0.12, c.z);
+    c._obj.rotation.y = t * 2;
+  }
+
+  // ---- portals: slow spin ----
+  for (const p of world.ports || []) if (p._obj) p._obj.rotation.y = t * 1.5;
+  if (world.goal && world.goal._obj) world.goal._obj.rotation.y = t * 1.5;
+
+  // ---- fans: spin the blade (direction from f.dir, matching drawFan) ----
+  for (const f of world.fans || []) {
+    const blade = f._obj && f._obj.userData && f._obj.userData.blade;
+    if (blade) blade.rotation.z = t * (f.dir > 0 ? 9 : -9);
+  }
+
+  // ---- balloon swings: track the handle along its arc ----
+  for (const sw of world.swings || []) {
+    if (!sw._obj) continue;
+    const h = swingHandle(sw);
+    const handle = sw._obj.userData && sw._obj.userData.handle;
+    if (handle) {
+      const lx = h.x - sw.ax, ly = h.y - sw.ay, lz = h.z - sw.az;
+      handle.position.set(lx, ly, lz);
+      const rope = sw._obj.userData.rope;
+      if (rope && rope.geometry) {
+        rope.geometry.setFromPoints([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(lx, ly, lz),
+        ]);
+      }
+    }
+    const balloons = sw._obj.userData && sw._obj.userData.balloons;
+    if (balloons) balloons.rotation.y = t * 0.25;
+  }
+}   // Task 13
 export function resetHazards() {}    // Task 14
