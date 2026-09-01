@@ -43,6 +43,8 @@ export function winGame() {
   run.running = false;
   hooks.sfx('win');
   hooks.music('stop');
+  // match index.html:2757 — winGame itself drives the screen transition
+  if (hooks.setState) hooks.setState('win');
   if (hooks.onWin) hooks.onWin();
   pendingTime = run.runTime;
   savedThisWin = false;

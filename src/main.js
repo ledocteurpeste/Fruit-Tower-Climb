@@ -12,7 +12,9 @@ import {
   buildSceneForLevel, syncDynamics, resetHazards,
   buildEnv, updateEnv, spawnSplash, updateSplash,
 } from './scene.js';
-import { loadCharacter, updateCharacter } from './character.js';
+import {
+  loadCharacter, updateCharacter, startCharPreview, stopCharPreview,
+} from './character.js';
 import { applyCamera, recenterCam } from './camera.js';
 import { initControls, readInput, checkOrient } from './controls.js';
 import { Audio_ } from './audio.js';
@@ -59,11 +61,18 @@ installHooks({
 /* --- state machine (index.html:3031-3043) --- */
 let state = 'menu';
 function setState(s) {
+  const prev = state;
   state = s;
   hud.showScreen(s);
   run.running = (s === 'play');
   if (s === 'play') { Audio_.init(); if (opts.music) Audio_.startMusic(); }
   if (s === 'over' || s === 'win' || s === 'menu') Audio_.stopMusic();
+  // char-select 3D preview: spin up on enter, fully tear down on leave
+  if (s === 'char' && prev !== 'char') {
+    startCharPreview(document.getElementById('charMid'), hud.getChosen());
+  } else if (prev === 'char' && s !== 'char') {
+    stopCharPreview();
+  }
 }
 
 /* --- startLevel (index.html:2489-2502) --- */

@@ -7,7 +7,7 @@
 import { run, opts, world } from './state.js';
 import { fmtTime } from './flow.js';
 import { THEMES } from './levels.js';
-import { CHARACTERS } from './character.js';
+import { CHARACTERS, selectCharacter } from './character.js';
 import { Audio_ } from './audio.js';
 import {
   ensureGuest, saveProfiles, prof, useProfile, getProfiles, getProfileName,
@@ -205,7 +205,7 @@ export function wireMenu({ startRun, setState, togglePause, nextLevel, restartLe
   click('beginBtn', () => { ensureGuest(); saveProfiles(); setState('char'); });
   click('optionsBtn', () => setState('options'));
   click('leaderBtn', () => { fillLeaderboard(); setState('leader'); });
-  click('quitBtn', () => setState('quit'));
+  click('quitBtn', () => { Audio_.stopMusic(); setState('quit'); });
 
   click('optBack', () => setState('menu'));
   click('lbBack', () => setState('menu'));
@@ -213,8 +213,12 @@ export function wireMenu({ startRun, setState, togglePause, nextLevel, restartLe
   click('charBack', () => setState('menu'));
   click('profBack', () => setState('menu'));
 
-  click('charPrev', () => { chosen = (chosen + CHARACTERS.length - 1) % CHARACTERS.length; updateCharUI(); });
-  click('charNext', () => { chosen = (chosen + 1) % CHARACTERS.length; updateCharUI(); });
+  /* selectCharacter owns the wraparound, ft_char persistence, preview reload and
+     in-game model swap. It gets hud's index accessors + label refresh here so
+     character.js never has to import hud.js (would be a cycle). */
+  const charApi = { getChosen, setChosen, onChange: updateCharUI };
+  click('charPrev', () => selectCharacter(-1, charApi));
+  click('charNext', () => selectCharacter(1, charApi));
   click('charGo', () => startRun());
 
   click('profileBtn', () => { updateProfileScreen(); setState('profile'); });
