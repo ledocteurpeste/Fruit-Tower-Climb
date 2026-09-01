@@ -8,7 +8,9 @@ Climb up **Cherry → Strawberry → Blueberry**, grabbing fruit and dodging haz
 
 ---
 
-[## ▶️ Play it](https://ledocteurpeste.github.io/Fruit-Tower-Climb/index.html)
+## ▶️ Play it
+
+[ledocteurpeste.github.io/Fruit-Tower-Climb](https://ledocteurpeste.github.io/Fruit-Tower-Climb/index.html)
 
 If on mobile, turn the phone sideways and tap **Begin Game**. In Safari you can also tap **Share → Add to Home Screen** to get a real app icon that opens fullscreen.
 
@@ -30,7 +32,7 @@ If on mobile, turn the phone sideways and tap **Begin Game**. In Safari you can 
 |---|---|---|
 | 🍒 **Cherry** | Gentle intro | Stepping platforms, a **moving platform**, a **spinning disc** to ride, a climbing wall |
 | 🍓 **Strawberry** | A step up | A **trampoline** to bounce over a wall, an **up‑fan** that lifts you, more spikes & moving platforms |
-| 🫐 **Blueberry** | The finale | A **rope swing** across a big gap, falling platform hazards, treadmills, and a spikes |
+| 🫐 **Blueberry** | The finale | A **rope swing** across a big gap, falling platform hazards, treadmills, and spikes |
 
 Clear all three to win — your total time is saved to the leaderboard.
 
@@ -38,7 +40,7 @@ Clear all three to win — your total time is saved to the leaderboard.
 
 ## ✨ What's in it
 
-- **Choose your climber** — 3D characters: **Hazel** (blonde, white tee & jeans), **Mimi** (cat‑ear headband), **Max** (wavy "bacon" hair), and **Sam** (spiky black hair).
+- **Play as a 3D climber** — an animated character that runs, jumps and climbs its way up the towers (more characters coming).
 - **Collectable fruit, a run timer, and 3 lives** shown at the top — collect **50 fruits for an extra life**. Fruits reset each tower.
 - **Checkpoints** throughout: fall and you respawn at the last flag, so it never gets frustrating.
 - **Full menus:** animated title screen, main menu (Begin · Options · Leaderboard · Quit), **Options** to toggle Music, Sound Effects, and **Cheats** (unlimited lives), and a **Leaderboard** of best times saved on the device.
@@ -68,8 +70,8 @@ python3 -m http.server 8000
 **Tests:** `npm test` — runs Node's built-in test runner, zero dependencies.
 
 - **Make a tower easier/harder:** each tower is built from the level data in `src/levels.js`.
-- **Jump feel:** the physics constants (`JUMP`, `GRAV`, `MOVE`, `TRAMP`) in `src/physics.js`.
-- **Characters:** the `CHARACTERS` array in `src/registry.js`.
+- **Jump feel:** the physics constants (`JUMP`, `GRAV`, `MOVE`, `TRAMP`) in `src/state.js` (`src/physics.js` just imports them).
+- **Characters:** the `CHARACTERS` array in `src/character.js`.
 - **Music:** the audio module in `src/audio.js` (each tower shifts musical key via `setTheme`).
 
 Rendering is Three.js (a retained scene graph, one renderer, `MeshStandardMaterial` + lights) over the Web Audio API.

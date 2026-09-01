@@ -1,6 +1,7 @@
 /* Level-flow glue, DOM-free.
    Ported from index.html:2510 (fmtTime) and index.html:2743-2773
-   (bankTowerTime / levelComplete / winGame / gameOver / nextLevel).
+   (bankTowerTime / levelComplete / winGame / nextLevel).
+   gameOver lives in main.js now (it needs setState + Audio_ directly).
    All DOM / scene / audio effects are routed through `hooks`, installed by main.js.
    Profile access comes straight from the DOM-free profile.js module (Task 15). */
 import { run } from './state.js';
@@ -31,8 +32,8 @@ export function levelComplete() {
   hooks.sfx('level');
   bankTowerTime();
   if (run.levelIdx >= 2) { winGame(); return; }
-  if (hooks.setState) hooks.setState('level');
-  if (hooks.levelInterstitial) hooks.levelInterstitial(run.levelIdx);
+  hooks.setState('level');
+  hooks.levelInterstitial(run.levelIdx);
 }
 
 export let pendingTime = null;
@@ -43,15 +44,17 @@ export function winGame() {
   run.running = false;
   hooks.sfx('win');
   hooks.music('stop');
-  // match index.html:2757 — winGame itself drives the screen transition
-  if (hooks.setState) hooks.setState('win');
-  if (hooks.onWin) hooks.onWin();
+  hooks.onWin();                        // main.js drives the screen transition
   pendingTime = run.runTime;
   savedThisWin = false;
   const p = prof();
-  if (p && (p.best == null || run.runTime < p.best)) { p.best = run.runTime; saveProfiles(); }
+  if (p) {
+    p.beaten = (p.beaten || 0) + 1;
+    if (p.best == null || run.runTime < p.best) p.best = run.runTime;
+    saveProfiles();
+  }
   saveWinName();
-  if (hooks.winStats) hooks.winStats(run.runTime);
+  hooks.winStats(run.runTime);
 }
 
 /* index.html:2766 — the run goes up under the profile name, no typing. */
@@ -60,19 +63,12 @@ export function saveWinName() {
   const nm = (getProfileName() || '').trim() || 'Climber';
   saveScore(nm, pendingTime);
   savedThisWin = true;
-  if (hooks.winName) hooks.winName(nm);
-}
-
-/* index.html:2772 */
-export function gameOver() {
-  if (hooks.setState) hooks.setState('over');
-  hooks.music('stop');
-  saveProfiles();
+  hooks.winName(nm);
 }
 
 /* index.html:2773 */
 export function nextLevel() {
-  if (hooks.setState) hooks.setState('play');
-  if (hooks.startNextLevel) hooks.startNextLevel(run.levelIdx + 1);
+  hooks.setState('play');
+  hooks.startNextLevel(run.levelIdx + 1);
   hooks.music('start');
 }

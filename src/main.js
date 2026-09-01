@@ -4,7 +4,7 @@
    Adapted to the real Task 1-10 module exports. */
 import * as THREE from 'three';
 import { player, run, opts, setWorld, resetPlayerTo, world } from './state.js';
-import { installHooks } from './hooks.js';
+import { installHooks, hooks } from './hooks.js';
 import { buildLevel } from './levels.js';
 import { physics, updateDynamics, tryJump, respawn } from './physics.js';
 import {
@@ -39,7 +39,7 @@ installHooks({
   showMsg: (t, ms) => hud.showMsg(t, ms),
   onDie: () => {
     hud.updateHUD();
-    if (!opts.cheat && run.lives <= 0) setTimeout(() => setState('over'), 700);
+    if (!opts.cheat && run.lives <= 0) setTimeout(() => hooks.gameOver(), 700);
   },
   onRespawn: () => resetHazards(),
   onLevelComplete: () => levelComplete(),
@@ -49,7 +49,7 @@ installHooks({
   onSplash: (x, z) => spawnSplash(x, z),   // Task 14
   setState: (s) => setState(s),
   startNextLevel: (idx) => startLevel(idx),
-  gameOver: () => setState('over'),
+  gameOver: () => { setState('over'); Audio_.stopMusic(); saveProfiles(); },   // index.html:2772
   levelInterstitial: (prevIdx) => hud.setLevelInterstitial(prevIdx),
   winStats: (t) => hud.setWinStats(t),
   winName: (nm) => {
