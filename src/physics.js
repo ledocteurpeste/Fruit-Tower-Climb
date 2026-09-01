@@ -1,4 +1,4 @@
-import { player, world, run, GRAV, JUMP, MOVE, TRAMP, AIR, CLIMB, resetPlayerTo } from './state.js';
+import { player, world, run, opts, GRAV, JUMP, MOVE, TRAMP, AIR, CLIMB, resetPlayerTo } from './state.js';
 import { hooks } from './hooks.js';
 
 /* =========================================================================
@@ -16,6 +16,8 @@ export function die(kind){
   player.dead=true; player.deadT=0; player.deadKind=kind;
   if(kind==='water') hooks.onSplash(player.x, player.z);
   hooks.sfx(kind==='water'?'splash':'die');
+  if(!opts.cheat) run.lives--;
+  if(!opts.cheat && run.lives<=0) run.running=false;
   hooks.onDie(kind);
 }
 export function respawn(){ resetPlayerTo(player.respawn); hooks.onRespawn(); hooks.showMsg('Try again! 💪',1200); }
@@ -145,7 +147,8 @@ export function postPhysics(t){
 
   for(const c of world.coins){ if(c.got) continue;
     if(Math.abs(player.x-c.x)<1.2 && Math.abs(player.z-c.z)<1.2 && Math.abs(player.y-c.y)<1.6){
-      c.got=true; hooks.sfx('coin'); hooks.onCoin(c); } }
+      c.got=true; run.coinsLevel++; run.coinsForLife++; hooks.sfx('coin'); hooks.onCoin(c);
+      if(run.coinsForLife>=50){ run.coinsForLife-=50; run.lives++; hooks.sfx('extra'); hooks.showMsg('Extra life! ❤',1400); } } }
 
   for(const ck of world.checks){ if(!ck.hit && Math.abs(player.x-ck.x)<2.6 && Math.abs(player.z-ck.z)<2.6 && Math.abs(player.y-ck.y)<2.2){
       ck.hit=true; player.respawn={x:ck.x,y:ck.y+0.7,z:ck.z}; hooks.sfx('check'); hooks.showMsg('Checkpoint! ✔',1200); hooks.onCheckpoint(ck); } }

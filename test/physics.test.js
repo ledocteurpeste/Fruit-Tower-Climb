@@ -1,8 +1,8 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { player, run, setWorld, resetPlayerTo } from '../src/state.js';
+import { player, run, opts, setWorld, resetPlayerTo } from '../src/state.js';
 import { installHooks } from '../src/hooks.js';
-import { physics, aabbV, onDisc, die } from '../src/physics.js';
+import { physics, postPhysics, aabbV, onDisc, die } from '../src/physics.js';
 
 function flatWorld() {
   return {
@@ -17,7 +17,11 @@ beforeEach(() => {
   setWorld(flatWorld());
   resetPlayerTo({ x: 0, y: 3, z: 0 });
   run.running = true;
-  installHooks({ onDie: () => { player.dead = true; } });
+  run.lives = 3;
+  run.coinsLevel = 0;
+  run.coinsForLife = 0;
+  opts.cheat = false;
+  installHooks({ onDie: () => { player.dead = true; }, onCoin: () => {} });
 });
 
 test('player falls under gravity and lands on the box top', () => {
@@ -35,4 +39,22 @@ test('walking off the edge and below y=-1 triggers a water death', () => {
 test('onDisc is a radial test', () => {
   assert.equal(onDisc(0, 0, { x: 0, z: 0, r: 2 }), true);
   assert.equal(onDisc(5, 0, { x: 0, z: 0, r: 2 }), false);
+});
+
+test('die() decrements run.lives when not cheating', () => {
+  die('water');
+  assert.equal(run.lives, 2);
+  assert.equal(player.dead, true);
+});
+
+test('collecting 50 coins grants an extra life and wraps coinsForLife', () => {
+  const w = flatWorld();
+  for (let i = 0; i < 50; i++) w.coins.push({ x: 0, y: 3, z: 0, got: false });
+  setWorld(w);
+  resetPlayerTo({ x: 0, y: 3, z: 0 });
+  run.lives = 3; run.coinsForLife = 0; run.coinsLevel = 0;
+  postPhysics(0);
+  assert.equal(run.coinsLevel, 50);
+  assert.equal(run.coinsForLife, 0);
+  assert.equal(run.lives, 4);
 });
