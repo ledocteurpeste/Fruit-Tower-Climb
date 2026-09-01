@@ -17,6 +17,7 @@ import { applyCamera, recenterCam } from './camera.js';
 import { initControls, readInput, checkOrient } from './controls.js';
 import { Audio_ } from './audio.js';
 import { levelComplete, nextLevel } from './flow.js';
+import { prof, saveProfiles } from './profile.js';
 import * as hud from './hud.js';
 
 const canvas = document.getElementById('game');
@@ -41,7 +42,7 @@ installHooks({
   onRespawn: () => resetHazards(),
   onLevelComplete: () => levelComplete(),
   onWin: () => setState('win'),
-  onCoin: () => {},            // Task 15: prof().fruit lifetime tally
+  onCoin: () => { const p = prof(); if (p) { p.fruit = (p.fruit || 0) + 1; saveProfiles(); } },
   onCheckpoint: () => {},
   onSplash: (x, z) => spawnSplash(x, z),   // Task 14
   setState: (s) => setState(s),
@@ -49,6 +50,10 @@ installHooks({
   gameOver: () => setState('over'),
   levelInterstitial: (prevIdx) => hud.setLevelInterstitial(prevIdx),
   winStats: (t) => hud.setWinStats(t),
+  winName: (nm) => {
+    const el = document.getElementById('nameLabel');
+    if (el) el.textContent = 'Nice one, ' + nm + ' — you’re on the board! 🏆';
+  },
 });
 
 /* --- state machine (index.html:3031-3043) --- */
@@ -87,12 +92,18 @@ function startLevel(idx) {
   hud.showMsg(T.emoji + ' ' + T.name + ' Tower — climb!');
 }
 
+/* --- character select index, seeded from localStorage (index.html:1314) --- */
+let chosen = 0;
+try { chosen = Math.max(0, parseInt(localStorage.getItem('ft_char') || '0', 10) || 0); } catch (e) { /* private mode */ }
+hud.setChosen(chosen);
+
 /* --- startRun (index.html:2503-2509) --- */
 function startRun() {
   run.lives = 3;
   run.coinsForLife = 0;
   run.runTime = 0;
-  try { localStorage.setItem('ft_char', String(0)); } catch (e) { /* private mode */ }
+  chosen = hud.getChosen();
+  try { localStorage.setItem('ft_char', String(chosen)); } catch (e) { /* private mode */ }
   setState('play');
   startLevel(0);
 }
@@ -103,6 +114,8 @@ function togglePause() {
 }
 
 initControls({ onJump: tryJump });
+hud.wireToggles();
+hud.updateMenuWho();
 hud.wireMenu({
   startRun, setState, togglePause, nextLevel,
   restartLevel: () => { setState('play'); startLevel(run.levelIdx); },
