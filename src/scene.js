@@ -563,5 +563,212 @@ export function syncDynamics(t) {
     const balloons = sw._obj.userData && sw._obj.userData.balloons;
     if (balloons) balloons.rotation.y = t * 0.25;
   }
+
+  // ---- checkpoint buoys: bob the flag + recolour when hit (Task 14) ----
+  for (const ck of world.checks || []) {
+    const grp = ck._obj;
+    if (!grp) continue;
+    const flag = grp.userData && grp.userData.flag;
+    if (flag) {
+      flag.position.y = 2.15 + Math.sin(t * 4) * 0.12;
+      flag.material = ck.hit ? mat(0x33d17a) : mat(0xffd34d);
+    }
+    const knob = grp.userData && grp.userData.knob;
+    if (knob) knob.material = ck.hit ? mat(0x33d17a) : mat(0xffd34d);
+  }
 }   // Task 13
-export function resetHazards() {}    // Task 14
+
+/* =========================================================================
+   ENVIRONMENT — water, sky, clouds — plus splash particles and checkpoint
+   buoys. Ported from index.html:1934-2076 (initEnv/drawEnv/spawnSplash/
+   updateSplash), index.html:2837-2845 (checkpoint buoys), 2483-2488
+   (resetHazards). Everything lives under ctx().envGroup.
+   ========================================================================= */
+
+const _waterGeo = new THREE.PlaneGeometry(460, 460);
+const _cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const _dropMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const _envGeos = new Set();          // per-spawn ring geometries, disposed on prune/clear
+
+const _clouds = [];                  // { mesh, x, sp }
+let _splashGroup = null;
+let splashDrops = [];
+let splashRings = [];
+
+function toColor(c, fallback) {
+  if (Array.isArray(c)) return new THREE.Color(c[0], c[1], c[2]);
+  if (c != null) return new THREE.Color(c);
+  return new THREE.Color(fallback);
+}
+
+function clearEnv(g) {
+  for (let i = g.children.length - 1; i >= 0; i--) {
+    const o = g.children[i];
+    o.traverse((n) => {
+      if (n.material && n.material._env) n.material.dispose();
+      if (n.geometry && _envGeos.has(n.geometry)) { n.geometry.dispose(); _envGeos.delete(n.geometry); }
+    });
+    g.remove(o);
+  }
+  _clouds.length = 0;
+  splashDrops = [];
+  splashRings = [];
+  _splashGroup = null;
+}
+
+export function buildEnv(theme) {
+  if (!_ctx) return;
+  const g = _ctx.envGroup;
+  clearEnv(g);
+
+  // ---- water: big translucent plane at y=-1 (player dies below y=-1) ----
+  const waterMat = new THREE.MeshStandardMaterial({
+    color: toColor(theme && theme.sea, 0x2aa3c8),
+    transparent: true, opacity: 0.92, roughness: 0.5, metalness: 0,
+  });
+  waterMat._env = true;
+  const water = new THREE.Mesh(_waterGeo, waterMat);
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(0, -1.0, 40);
+  water.receiveShadow = true;
+  g.add(water);
+
+  // ---- darker shelf just below, like index.html:1957-1958 ----
+  const shelfMat = new THREE.MeshStandardMaterial({
+    color: toColor(theme && theme.seaDeep, 0x17708f), roughness: 0.6, metalness: 0,
+  });
+  shelfMat._env = true;
+  const shelf = new THREE.Mesh(_waterGeo, shelfMat);
+  shelf.rotation.x = -Math.PI / 2;
+  shelf.position.set(0, -2.6, 40);
+  g.add(shelf);
+
+  // ---- clouds: a dozen flattened white spheres, drifting on x in updateEnv ----
+  for (let i = 0; i < 12; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const x = side * (72 + Math.random() * 120);
+    const y = 26 + Math.random() * 30;
+    const z = -70 + Math.random() * 260;
+    const s = 5.0 + Math.random() * 5.0;
+    const m = new THREE.Mesh(GEO.sphere, _cloudMat);
+    m.scale.set(s, s * 0.6, s);
+    m.position.set(x, y, z);
+    g.add(m);
+    _clouds.push({ mesh: m, x, sp: 0.25 + Math.random() * 0.4 });
+  }
+  // Birds/fins skipped — cosmetic only, safe to defer (see Task 14 report).
+
+  _splashGroup = new THREE.Group();
+  g.add(_splashGroup);
+
+  buildCheckpoints();
+}
+
+// Checkpoint buoys have no _obj from Task 12 — built here; the per-frame bob +
+// colour live in syncDynamics' `world.checks` loop above.
+function buildCheckpoints() {
+  if (!_ctx || !world) return;
+  const g = _ctx.envGroup;
+  for (const ck of world.checks || []) {
+    ck._obj = null;
+    if (ck.hidden) continue;                // the spawn checkpoint needs no flag
+    const grp = new THREE.Group();
+    grp.position.set(ck.x, ck.y, ck.z);
+
+    const pole = new THREE.Mesh(GEO.cyl, mat(0xcbd5e1));
+    pole.scale.set(0.22, 2.6, 0.22);
+    pole.position.y = 1.2;
+    pole.castShadow = true;
+    grp.add(pole);
+
+    const flag = new THREE.Mesh(GEO.box, ck.hit ? mat(0x33d17a) : mat(0xffd34d));
+    flag.scale.set(1.5, 0.85, 0.09);
+    flag.position.set(0.85, 2.15, 0);
+    flag.castShadow = true;
+    grp.add(flag);
+    grp.userData.flag = flag;
+
+    const knob = new THREE.Mesh(GEO.sphere, ck.hit ? mat(0x33d17a) : mat(0xffd34d));
+    knob.scale.setScalar(0.16);
+    knob.position.y = 2.62;
+    grp.add(knob);
+    grp.userData.knob = knob;
+
+    g.add(grp);
+    ck._obj = grp;
+  }
+}
+
+export function updateEnv(t) {
+  for (const c of _clouds) {
+    c.mesh.position.x = c.x + Math.sin(t * 0.05 * c.sp) * 6;
+  }
+}
+
+/* ---- splash: droplets plus expanding surface rings (index.html:2052-2062) ---- */
+export function spawnSplash(x, z) {
+  if (!_splashGroup) return;
+  for (let i = 0; i < 32; i++) {
+    const a = Math.random() * 6.2832, sp = 1.4 + Math.random() * 5.2;
+    const r = 0.13 + Math.random() * 0.22;
+    const m = new THREE.Mesh(GEO.sphere, _dropMat);
+    m.scale.setScalar(r);
+    m.position.set(x, -0.55, z);
+    _splashGroup.add(m);
+    splashDrops.push({
+      x, y: -0.55, z, vx: Math.cos(a) * sp, vy: 5.5 + Math.random() * 8,
+      vz: Math.sin(a) * sp, r, life: 1.15, mesh: m,
+    });
+  }
+  const geo = new THREE.RingGeometry(0.9, 1.1, 24);
+  _envGeos.add(geo);
+  const rmat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide,
+  });
+  const rm = new THREE.Mesh(geo, rmat);
+  rm.rotation.x = -Math.PI / 2;
+  rm.position.set(x, -0.56, z);
+  _splashGroup.add(rm);
+  splashRings.push({ t: 0, mesh: rm, geo, mat: rmat });
+}
+
+export function updateSplash(dt) {
+  if (!_splashGroup) return;
+  for (const p of splashDrops) {
+    p.vy += -26 * 0.55 * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    p.life -= dt * 0.85;
+    p.mesh.position.set(p.x, p.y, p.z);
+  }
+  splashDrops = splashDrops.filter((p) => {
+    const keep = p.life > 0 && p.y > -1.3;
+    if (!keep) _splashGroup.remove(p.mesh);
+    return keep;
+  });
+  for (const r of splashRings) {
+    r.t += dt;
+    r.mesh.scale.setScalar(1.1 + r.t * 7.5);
+    r.mat.opacity = Math.max(0, 0.85 * (1 - r.t / 1.5));
+  }
+  splashRings = splashRings.filter((r) => {
+    const keep = r.t < 1.5;
+    if (!keep) {
+      _splashGroup.remove(r.mesh);
+      r.geo.dispose();
+      _envGeos.delete(r.geo);
+      r.mat.dispose();
+    }
+    return keep;
+  });
+}
+
+/* ---- resetHazards: port of index.html:2483-2488 (pure data), then snap
+   the meshes back with a zero-time syncDynamics. ---- */
+export function resetHazards() {
+  if (!world) return;
+  for (const s of world.solids || []) {
+    if (s.crumb) { s.dead = false; s.timer = -1; s.fall = 0; s.y = s.by; }
+  }
+  for (const sw of world.swings || []) { sw.ang = -0.55; sw.angVel = 0; }
+  syncDynamics(0);
+}

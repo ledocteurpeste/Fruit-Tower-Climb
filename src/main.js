@@ -10,6 +10,7 @@ import { physics, updateDynamics, tryJump, respawn } from './physics.js';
 import {
   initScene, render, resize, ctx,
   buildSceneForLevel, syncDynamics, resetHazards,
+  buildEnv, updateEnv, spawnSplash, updateSplash,
 } from './scene.js';
 import { loadCharacter, updateCharacter } from './character.js';
 import { applyCamera, recenterCam } from './camera.js';
@@ -42,7 +43,7 @@ installHooks({
   onWin: () => setState('win'),
   onCoin: () => {},            // Task 15: prof().fruit lifetime tally
   onCheckpoint: () => {},
-  onSplash: () => {},          // Task 14
+  onSplash: (x, z) => spawnSplash(x, z),   // Task 14
   setState: (s) => setState(s),
   startNextLevel: (idx) => startLevel(idx),
   gameOver: () => setState('over'),
@@ -74,6 +75,7 @@ function startLevel(idx) {
   player.hasKey = false;
   player.celebrateUntil = 0;
   buildSceneForLevel(w);
+  buildEnv(w.theme);
   resetHazards();
   recenterCam();                       // controls' look-drag isn't game-state gated
   const T = w.theme, c = ctx();
@@ -128,6 +130,8 @@ function frame(now) {
       physics(dt, t, ix, iz);          // physics() runs the post-physics pass itself
       if ((now | 0) % 4 === 0) hud.updateHUD();
     }
+    updateSplash(dt);
+    updateEnv(t);
   }
   syncDynamics(t);
   updateCharacter(dt, t);
