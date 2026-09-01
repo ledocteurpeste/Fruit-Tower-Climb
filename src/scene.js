@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { VFOV_RAD } from './camera.js';
 import { typeOf } from './registry.js';
+import { swingHandle } from './physics.js';
 
 export const GEO = {
   box: new THREE.BoxGeometry(1, 1, 1),
@@ -85,6 +86,23 @@ function ownMat(color) {
   return m;
 }
 
+// One shared emissive material for every coin (persistent, like the GEO/mat
+// cache — NOT tracked for per-level disposal). Task 13 can pulse its
+// emissiveIntensity globally.
+let _coinMat = null;
+function coinMat() {
+  if (!_coinMat) {
+    _coinMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(0xff3b6b),
+      emissive: new THREE.Color(0xff3b6b),
+      emissiveIntensity: 0.4,
+      roughness: 0.5,
+      metalness: 0,
+    });
+  }
+  return _coinMat;
+}
+
 const FRUIT_COL = {
   cherry: 0xd6183f, strawberry: 0xf03047, blueberry: 0x4f61d8, raspberry: 0xe0335f,
   watermelon: 0xff5d6e, orange: 0xff8c1a, kiwi: 0x9bd35a, pineapple: 0xffd94d,
@@ -157,20 +175,47 @@ export const REGISTRY = {
   },
   swing: {
     glb: null,
+    // Group origin sits at the ANCHOR (sw.ax,sw.ay,sw.az). Contains a balloon
+    // cluster at the anchor and a handle marker (userData.handle) that Task 13
+    // moves each frame to swingHandle(sw) - anchor.
     placeholder(item) {
       const g = new THREE.Group();
       const len = item.len || 5.4;
+      const cols = item.cols && item.cols.length ? item.cols : [0xff4d6d, 0xffd34d, 0x4dc3ff];
+      const cluster = new THREE.Group();
+      cols.forEach((c, i) => {
+        const b = new THREE.Mesh(GEO.sphere, mat(c));
+        b.scale.setScalar(0.7);
+        const a = (i / cols.length) * Math.PI * 2;
+        b.position.set(Math.cos(a) * 0.55, 0.2 + (i % 2) * 0.4, Math.sin(a) * 0.55);
+        cluster.add(b);
+      });
+      g.add(cluster);
+      g.userData.balloons = cluster;
+
+      const handle = new THREE.Group();
+      const knob = new THREE.Mesh(GEO.sphere, mat(0x3a2a1a));
+      knob.scale.setScalar(0.22);
+      handle.add(knob);
+      const bar = new THREE.Mesh(GEO.box, mat(0x6b4a2a));
+      bar.scale.set(1.0, 0.12, 0.12);
+      handle.add(bar);
+      // initial pose: local offset of the handle from the anchor
+      const dx = Math.sin(item.ang || 0) * (item.dirx || 0) * len;
+      const dy = -Math.cos(item.ang || 0) * len;
+      const dz = Math.sin(item.ang || 0) * (item.dirz || 0) * len;
+      handle.position.set(dx, dy, dz);
+      g.add(handle);
+      g.userData.handle = handle;
+
       const geo = new THREE.BufferGeometry().setFromPoints(
-        [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -len, 0)]);
+        [new THREE.Vector3(0, 0, 0), new THREE.Vector3(dx, dy, dz)]);
       _levelGeos.add(geo);
       const lmat = new THREE.LineBasicMaterial({ color: 0x444444 });
       _levelMats.add(lmat);
-      g.add(new THREE.Line(geo, lmat));
-      const balloon = new THREE.Mesh(GEO.sphere, mat(0xff5566));
-      balloon.scale.setScalar(0.8);
-      balloon.position.y = -len;
-      g.add(balloon);
-      g.userData.balloon = balloon;
+      const line = new THREE.Line(geo, lmat);
+      g.add(line);
+      g.userData.rope = line;
       return g;
     },
   },
@@ -262,10 +307,7 @@ export const REGISTRY = {
   coin: {
     glb: null,
     placeholder(item) {
-      const cm = ownMat(0xff3b6b);
-      cm.emissive = new THREE.Color(0xff3b6b);
-      cm.emissiveIntensity = 0.4;
-      const m = new THREE.Mesh(GEO.sphere, cm);
+      const m = new THREE.Mesh(GEO.sphere, coinMat());
       m.scale.setScalar(0.28);
       return m;
     },
@@ -406,12 +448,24 @@ export function buildSceneForLevel(world) {
   };
 
   for (const s of world.solids || []) { if (s.nodraw) continue; add(s, typeOf(s)); }
+  for (const f of world.fans || []) { add(f, 'fan'); f._static = false; }
   for (const k of world.spikes || []) add(k, 'spike');
   for (const c of world.coins || []) { add(c, 'coin'); c._static = false; }
   for (const k of world.keys || []) add(k, 'key');
   for (const c of world.cages || []) add(c, 'cage');
   for (const n of world.npcs || []) add(n, 'npc');
   for (const p of world.ports || []) { add(p, 'portal'); p._static = false; }
+  for (const sw of world.swings || []) {
+    const obj = REGISTRY.swing.placeholder(sw);
+    obj.position.set(sw.ax, sw.ay, sw.az);
+    obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    // place the handle marker at its live position (local offset from anchor)
+    const h = swingHandle(sw);
+    if (obj.userData.handle) obj.userData.handle.position.set(h.x - sw.ax, h.y - sw.ay, h.z - sw.az);
+    sw._obj = obj;
+    sw._static = false;
+    g.add(obj);
+  }
   add(world.goal, 'portal'); if (world.goal) world.goal._static = false;
   add(world.finish, 'finish');
   add(world.arch, 'arch');
