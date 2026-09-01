@@ -62,3 +62,28 @@ export function resize(canvas) {
 
 export function render() { if (_ctx) _ctx.renderer.render(_ctx.scene, _ctx.camera); }
 export function ctx() { return _ctx; }
+
+/* =========================================================================
+   Level scene build — TEMPORARY ground-proof for Milestone 2.
+   Tasks 12-14 replace this with real fruit/candy/hazard geometry and fill
+   the syncDynamics / resetHazards stubs.
+   ========================================================================= */
+export function buildSceneForLevel(world) {
+  if (!_ctx) return;
+  const g = _ctx.levelGroup;
+  for (let i = g.children.length - 1; i >= 0; i--) g.remove(g.children[i]);
+  if (!world || !world.solids) return;
+  for (const s of world.solids) {
+    if (s.nodraw) continue;
+    if (typeof s.w !== 'number' || typeof s.h !== 'number' || typeof s.d !== 'number') continue;
+    const m = new THREE.Mesh(GEO.box, mat(s.c != null ? s.c : 0xb4762f));
+    m.position.set(s.x, s.y, s.z);
+    m.scale.set(s.w, s.h, s.d);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    g.add(m);
+  }
+}
+
+export function syncDynamics(t) {}   // Task 13
+export function resetHazards() {}    // Task 14
