@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>glTF Loader Spike — Fruit Tower Climb</title>
+<style>
+  html,body{margin:0;height:100%;background:#0f1420;overflow:hidden;font-family:system-ui,sans-serif}
+  #hud{
+    position:fixed;left:12px;top:12px;z-index:10;
+    color:#dfe7f5;font-size:13px;line-height:1.5;
+    background:rgba(15,20,32,.72);padding:10px 12px;border-radius:8px;
+    white-space:pre;pointer-events:none;
+  }
+  #hud b{color:#8fd0ff}
+</style>
+</head>
+<body>
+<div id="hud">loading…</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+/* ---------------------------------------------------------------- scene */
+const hud = document.getElementById('hud');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f1420);
+scene.fog = new THREE.Fog(0x0f1420, 20, 60);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* --------------------------------------------------------------- lights */
+scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x39424f, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(6, 12, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = sun.shadow.camera.bottom = -20;
+sun.shadow.camera.right = sun.shadow.camera.top = 20;
+scene.add(sun);
+
+/* ---------------------------------------------------------------- ground */
+const GROUND_Y = 0;
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(120, 120),
+  new THREE.MeshStandardMaterial({ color: 0x2b3547 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = GROUND_Y;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(120, 60, 0x4a5a72, 0x323d4f);
+grid.position.y = GROUND_Y + 0.01;
+scene.add(grid);
+
+/* --------------------------------------------------- character load + rig */
+const gltfLoader = new GLTFLoader();
+
+let playerModel = null;
+let mixer = null;
+const actions = {};
+let activeAction = null;
+
+// Container the "physics" moves — mirrors index.html's playerGroup idea.
+const playerGroup = new THREE.Group();
+scene.add(playerGroup);
+
+const TEST_MODEL_URL =
+  'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/RobotExpressive/RobotExpressive.glb';
+
+// Which clip name to use for each gameplay state. RobotExpressive ships
+// "Idle", "Running", "Jump" among others.
+const CLIP_FOR_STATE = { idle: 'Idle', run: 'Running', air: 'Jump' };
+
+gltfLoader.load(
+  TEST_MODEL_URL,
+  (gltf) => {
+    while (playerGroup.children.length > 0) playerGroup.remove(playerGroup.children[0]);
+
+    playerModel = gltf.scene;
+    playerModel.scale.set(0.35, 0.35, 0.35);
+    playerModel.position.set(0, 0, 0); // feet sit on playerGroup's origin
+
+    playerModel.traverse((child) => {
+      if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+    });
+    playerGroup.add(playerModel);
+
+    if (gltf.animations && gltf.animations.length > 0) {
+      mixer = new THREE.AnimationMixer(playerModel);
+      gltf.animations.forEach((clip) => { actions[clip.name] = mixer.clipAction(clip); });
+      if (actions[CLIP_FOR_STATE.idle]) setAction(actions[CLIP_FOR_STATE.idle]);
+    }
+
+    hud.dataset.ready = '1';
+    console.log('Test character loaded. Clips:', Object.keys(actions));
+  },
+  (xhr) => {
+    if (xhr.total) hud.textContent = `Loading model: ${((xhr.loaded / xhr.total) * 100).toFixed(0)}%`;
+  },
+  (err) => {
+    hud.textContent = 'Failed to load test model — see console.';
+    console.error('Failed to load test model:', err);
+  }
+);
+
+// Smooth blend between clips (from the user's snippet).
+function setAction(toAction) {
+  if (activeAction === toAction) return;
+  if (activeAction) activeAction.fadeOut(0.2);
+  toAction.reset().fadeIn(0.2).play();
+  activeAction = toAction;
+}
+
+function stateAction(state) {
+  const name = CLIP_FOR_STATE[state];
+  return actions[name] || null;
+}
+
+/* ------------------------------------------------- tiny stand-in controller */
+// NOT the real game physics — index.html's move() is tangled with world
+// geometry. This is only enough to exercise idle / run / jump transitions.
+const keys = new Set();
+addEventListener('keydown', (e) => keys.add(e.code));
+addEventListener('keyup', (e) => keys.delete(e.code));
+
+const player = {
+  x: 0, y: 0, z: 0,
+  vx: 0, vy: 0, vz: 0,
+  facing: 0,
+  onGround: true,
+  walk: 0, // kept for parity with index.html; unused by the mixer
+};
+
+const SPEED = 6;
+const GRAV = -22;
+const JUMP = 9;
+
+function stepController(dt) {
+  let ix = 0, iz = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
+  const len = Math.hypot(ix, iz) || 1;
+  ix /= len; iz /= len;
+  const moving = (ix || iz) ? 1 : 0;
+
+  player.vx = ix * SPEED;
+  player.vz = iz * SPEED;
+
+  if (player.onGround && keys.has('Space')) { player.vy = JUMP; player.onGround = false; }
+  player.vy += GRAV * dt;
+
+  player.x += player.vx * dt;
+  player.y += player.vy * dt;
+  player.z += player.vz * dt;
+
+  if (player.y <= GROUND_Y) { player.y = GROUND_Y; player.vy = 0; player.onGround = true; }
+
+  if (moving) player.facing = Math.atan2(player.vx, player.vz);
+  player.walk += Math.hypot(player.vx, player.vz) * dt;
+
+  return moving;
+}
+
+function currentState(moving) {
+  if (!player.onGround) return 'air';
+  return moving ? 'run' : 'idle';
+}
+
+/* ------------------------------------------------------------- camera rig */
+function updateCamera() {
+  const back = new THREE.Vector3(-Math.sin(player.facing), 0, -Math.cos(player.facing));
+  camera.position.set(
+    player.x + back.x * 7,
+    player.y + 4.5,
+    player.z + back.z * 7
+  );
+  camera.lookAt(player.x, player.y + 1.2, player.z);
+}
+
+/* -------------------------------------------------------------- main loop */
+const clock = new THREE.Clock();
+let lastState = 'idle';
+
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, clock.getDelta());
+
+  const moving = stepController(dt);
+  playerGroup.position.set(player.x, player.y, player.z);
+  playerGroup.rotation.y = player.facing;
+
+  if (mixer) {
+    const st = currentState(moving);
+    if (st !== lastState) {
+      const a = stateAction(st);
+      if (a) setAction(a);
+      lastState = st;
+    }
+    mixer.update(dt);
+  }
+
+  updateCamera();
+  renderer.render(scene, camera);
+
+  if (hud.dataset.ready) {
+    hud.textContent =
+      `glTF loader spike\n` +
+      `WASD / arrows = move   Space = jump\n` +
+      `\n` +
+      `state:  ${lastState}\n` +
+      `clip:   ${activeAction && activeAction.getClip ? activeAction.getClip().name : '—'}\n` +
+      `pos:    ${player.x.toFixed(1)}, ${player.y.toFixed(1)}, ${player.z.toFixed(1)}\n` +
+      `clips:  ${Object.keys(actions).join(', ') || '—'}`;
+  }
+}
+frame();
+</script>
+</body>
+</html>
