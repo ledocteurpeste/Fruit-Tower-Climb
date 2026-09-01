@@ -59,7 +59,7 @@ installHooks({
 });
 
 /* --- state machine (index.html:3031-3043) --- */
-let state = 'menu';
+let state = 'intro';
 function setState(s) {
   const prev = state;
   state = s;
@@ -169,4 +169,15 @@ requestAnimationFrame(frame);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) Audio_.kick(); });
 setInterval(() => Audio_.kick(), 2000);
 
-setState('menu');
+/* Intro splash (index.html:3247-3255): fade the title in, then dismiss the
+   opaque #intro overlay and drop to the menu. Without this the z-index:60
+   overlay sits on top of everything and the page reads as blank. */
+(function intro() {
+  const it = document.getElementById('introTitle');
+  const ib = document.getElementById('introBy');
+  const el = document.getElementById('intro');
+  if (it) setTimeout(() => it.classList.add('fadeUp'), 300);
+  if (ib) setTimeout(() => ib.classList.add('fadeIn'), 1600);
+  setTimeout(() => { if (state === 'intro' && el) { el.style.transition = 'opacity .6s'; el.style.opacity = '0'; } }, 3400);
+  setTimeout(() => { if (el) el.style.display = 'none'; if (state === 'intro') setState('menu'); }, 4100);
+}());
